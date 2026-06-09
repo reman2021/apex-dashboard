@@ -1,4 +1,4 @@
-import { App, TFile } from 'obsidian';
+import { App, TAbstractFile, TFile } from 'obsidian';
 import type { DashboardSettings, DashboardCard, DashboardData, TaskItem, QuickAction, BannerData, CardType } from './types';
 import { parse, serialize, generateDefaultMarkdown } from './parser';
 import { t } from './i18n';
@@ -321,33 +321,6 @@ export class SyncEngine {
 		await this.writeToDisk();
 	}
 
-	async moveCard(cardId: string, targetColumn: string, targetIndex: number): Promise<void> {
-		if (!this.data) return;
-
-		let movedCard: DashboardCard | null = null;
-
-		const columnsWithout = this.data.columns.map(col => {
-			const idx = col.cards.findIndex(c => c.id === cardId);
-			if (idx !== -1) {
-				movedCard = { ...col.cards[idx]!, column: targetColumn };
-				return { ...col, cards: [...col.cards.slice(0, idx), ...col.cards.slice(idx + 1)] };
-			}
-			return col;
-		});
-
-		if (!movedCard) return;
-
-		const newColumns = columnsWithout.map(col => {
-			if (col.name !== targetColumn) return col;
-			const cards = [...col.cards];
-			cards.splice(targetIndex, 0, movedCard!);
-			return { ...col, cards };
-		});
-
-		this.data = { ...this.data, columns: newColumns };
-		await this.writeToDisk();
-	}
-
 	async updateBanner(updates: Partial<BannerData>): Promise<void> {
 		if (!this.data) return;
 		this.data = {
@@ -624,8 +597,9 @@ export class SyncEngine {
 			}
 		});
 
-		this.renameEventRef = this.app.vault.on('rename', (file: TFile, oldPath: string) => {
+		this.renameEventRef = this.app.vault.on('rename', (file: TAbstractFile, oldPath: string) => {
 			if (!this.data) return;
+			if (!(file instanceof TFile)) return;
 			this.handleFileRename(file, oldPath);
 		});
 	}

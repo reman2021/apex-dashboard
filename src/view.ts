@@ -6,7 +6,6 @@ import { renderDashboard, destroyAllCharts, renderSidebarWidgets, renderSidebarW
 import { renderBanner, BannerEditModal, resolveVaultImage } from './banner';
 import { getRecentDocs, renderRecentDocs } from './recent';
 import { renderQuickActions, AddActionModal, DocSearchModal } from './quick-actions';
-import { setupDragAndDrop } from './dnd';
 import { CardEditModal } from './card-edit-modal';
 import { showConfirmDialog } from './confirm-dialog';
 import { clearWeatherCache } from './weather-service';
@@ -65,7 +64,7 @@ export class DashboardView extends ItemView {
 	}
 
 	getDisplayText(): string {
-		return t('main.dashboard');
+		return this.plugin.settings.dashboardTitle.trim() || t('main.dashboard');
 	}
 
 	getIcon(): string {
@@ -162,9 +161,12 @@ export class DashboardView extends ItemView {
 			bannerEl.addClass('dashboard-banner--collapsed');
 		}
 		this.setupBannerBehavior(bannerEl);
+		void this.applyQuoteLibrary(data.banner, bannerEl);
 
 		// Banner quote rotation
-		this.setupBannerRotation(container, data.banner);
+		if (!data.banner.quoteLibraryPath?.trim()) {
+			this.setupBannerRotation(container, data.banner);
+		}
 
 		this.renderMobileWidgetBar(container);
 
@@ -183,7 +185,6 @@ export class DashboardView extends ItemView {
 
 		const kanban = mainLayout.createDiv({ cls: 'dashboard-kanban-wrapper' });
 		renderDashboard(kanban, data, this.createCallbacks(), this.app, this.plugin.settings);
-		setupDragAndDrop(kanban, this.createCallbacks(), this.cleanupFns);
 		// Library config event delegation
 		kanban.addEventListener('dashboard-library-config', ((e: CustomEvent) => {
 			const { columnName } = e.detail as { columnName: string };
@@ -461,6 +462,28 @@ export class DashboardView extends ItemView {
 		}
 	}
 
+	private async applyQuoteLibrary(banner: BannerData, bannerEl: HTMLElement): Promise<void> {
+		const path = banner.quoteLibraryPath?.trim();
+		if (!path) return;
+		const file = this.app.vault.getAbstractFileByPath(path);
+		if (!(file instanceof TFile)) return;
+		try {
+			const raw = await this.app.vault.read(file);
+			const quotes = raw.split(/\r?\n/).map(parseQuoteLibraryLine).filter(item => item.quote);
+			if (quotes.length === 0) return;
+			const quoteEl = bannerEl.querySelector('.dashboard-banner-quote') as HTMLElement | null;
+			const authorEl = bannerEl.querySelector('.dashboard-banner-author') as HTMLElement | null;
+			if (!quoteEl || !authorEl) return;
+			const next = quotes[Math.floor(Math.random() * quotes.length)];
+			if (next) {
+				quoteEl.textContent = next.quote;
+				authorEl.textContent = next.author;
+			}
+		} catch {
+			// Keep the manually configured quote as the fallback.
+		}
+	}
+
 	private openMobileDrawer(type: 'quickActions' | 'recent'): void {
 		this.closeMobileDrawer();
 
@@ -681,7 +704,6 @@ export class DashboardView extends ItemView {
 					if (confirmed) this.sync.removeQuickAction(index);
 				});
 			},
-			onMoveCard: (cardId: string, targetCol: string, targetIdx: number) => this.sync.moveCard(cardId, targetCol, targetIdx),
 			onMemoColorChange: (card: DashboardCard, color: string) => this.sync.updateMemoColor(card.id, color),
 			onProjectCoverChange: (card: DashboardCard, imagePath: string) => this.sync.updateProjectCover(card.id, imagePath),
 				onCardTitleEdit: (cardId: string, newTitle: string) => this.sync.updateCard(cardId, { title: newTitle }),
@@ -1062,4 +1084,16 @@ export class DashboardView extends ItemView {
 		);
 		modal.open();
 	}
+}
+
+function parseQuoteLibraryLine(line: string): { quote: string; author: string } {
+	const trimmed = line.trim();
+	if (!trimmed) return { quote: '', author: '' };
+	const separator = /\s(?:\||—|–|-)\s/;
+	const match = trimmed.match(separator);
+	if (!match || match.index === undefined) return { quote: trimmed, author: '' };
+	return {
+		quote: trimmed.slice(0, match.index).trim(),
+		author: trimmed.slice(match.index + match[0].length).trim(),
+	};
 }

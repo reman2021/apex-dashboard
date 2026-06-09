@@ -97,6 +97,21 @@ export class DashboardSettingTab extends PluginSettingTab {
 					};
 					await this.plugin.saveSettings();
 				}));
+
+		new Setting(containerEl)
+			.setName(t('settings.dashboardTitle'))
+			.setDesc(t('settings.dashboardTitleDesc'))
+			.addText(text => text
+				.setPlaceholder(t('main.dashboard'))
+				.setValue(this.plugin.settings.dashboardTitle)
+				.onChange(async (value) => {
+					this.plugin.settings = {
+						...this.plugin.settings,
+						dashboardTitle: value.trim(),
+					};
+					await this.plugin.saveSettings();
+					this.plugin.refreshAllDashboards();
+				}));
 		this.renderWidgetSettings(containerEl);
 
 		this.renderLunarSettings(containerEl);

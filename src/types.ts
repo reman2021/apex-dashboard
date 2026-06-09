@@ -2,6 +2,7 @@ import type { Language } from './i18n';
 
 export interface DashboardSettings {
 	dashboardFile: string;
+	dashboardTitle: string;
 	recentDocCount: number;
 	language: Language;
 	stylePreset: string;
@@ -34,6 +35,7 @@ export interface DashboardSettings {
 
 export const DEFAULT_SETTINGS: DashboardSettings = {
 	dashboardFile: 'dashboard',
+	dashboardTitle: '',
 	recentDocCount: 5,
 	language: 'en',
 	stylePreset: 'earth',
@@ -74,6 +76,7 @@ export interface BannerData {
 	author: string;
 	image: string;
 	quoteColor?: string;
+	quoteLibraryPath?: string;
 	quotes?: QuoteItem[];
 	images?: string[];
 }
@@ -217,7 +220,6 @@ export interface RenderCallbacks {
 	onBannerEdit(): void;
 	onQuickActionAdd(): void;
 	onQuickActionRemove(index: number): void;
-	onMoveCard(cardId: string, targetColumn: string, targetIndex: number): void;
 	onMemoUpdate(card: DashboardCard, updates: { body: string; blockquote: string }): void;
 	onProjectDocsUpdate(card: DashboardCard, docPaths: string[]): void;
 	onProjectDocsReorder(cardId: string, fromIndex: number, toIndex: number): void;

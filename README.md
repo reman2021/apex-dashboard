@@ -37,7 +37,7 @@ The left sidebar features decorative widgets for at-a-glance information:
 A customizable banner with an inspirational quote and optional background image. Supports both local vault images and web URLs. Double-click to edit.
 
 ### 🔄 Drag & Drop
-Drag cards between sections to reorganize your workspace. Drag task items within Todo cards to reorder. Drag document links between project/note cards.
+Drag task items within Todo cards to reorder. Drag document links between project/note cards.
 
 ### 🧩 Custom Sections
 Create sections with 4 built-in types — **Memo**, **Todo**, **Projects**, and **Notes** — each with its own layout and behavior. Mix and match to fit your workflow.
@@ -46,10 +46,6 @@ Create sections with 4 built-in types — **Memo**, **Todo**, **Projects**, and 
 The sidebar shows recently edited files with relative timestamps, so you can jump back into your latest work.
 
 ## Themes
-
-![Themes Preview](screenshot2.png)
-![Themes Preview](screenshot3.png)
-![Themes Preview](screenshot4.png)
 
 11 handcrafted themes, each with distinct visual identity:
 

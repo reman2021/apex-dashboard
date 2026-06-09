@@ -163,12 +163,12 @@ export class FortuneStickModal {
 	}
 
 	private getCategoryEmoji(category: FortuneCategory): string {
-		const found = FORTUNE_CATEGORIES.find(c => c.key === category);
+		const found = FORTUNE_CATEGORIES.find((c) => c.key === category);
 		return found ? found.emoji : '';
 	}
 
 	private getCategoryLabel(category: FortuneCategory): string {
-		const found = FORTUNE_CATEGORIES.find(c => c.key === category);
+		const found = FORTUNE_CATEGORIES.find((c) => c.key === category);
 		return found ? found.label : '';
 	}
 }

@@ -61,6 +61,9 @@ export function serialize(data: DashboardData): string {
 	if (data.banner.quoteColor) {
 		lines.push(`  quoteColor: "${data.banner.quoteColor}"`);
 	}
+	if (data.banner.quoteLibraryPath) {
+		lines.push(`  quoteLibraryPath: "${escapeYamlString(data.banner.quoteLibraryPath)}"`);
+	}
 	if (data.banner.quotes && data.banner.quotes.length > 0) {
 		lines.push('  quotes:');
 		for (const q of data.banner.quotes) {
@@ -344,7 +347,6 @@ export function generateDefaultMarkdown(): string {
 						body: '',
 						tasks: [
 							{ text: t('default.todo1'), checked: false },
-							{ text: t('default.todo2'), checked: false },
 							{ text: t('default.todo3'), checked: false },
 							{ text: t('default.todo4'), checked: false },
 						],
@@ -539,6 +541,7 @@ function parseBanner(fm: Record<string, unknown>): BannerData {
 		author: (raw.author as string) ?? DEFAULT_BANNER.author,
 		image: (raw.image as string) ?? '',
 		quoteColor: (raw.quoteColor as string) || undefined,
+		quoteLibraryPath: (raw.quoteLibraryPath as string) || undefined,
 		quotes,
 		images,
 	};

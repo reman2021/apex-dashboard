@@ -42,6 +42,30 @@ function getCSSVar(name: string): string {
 	return getComputedStyle(el).getPropertyValue(name).trim();
 }
 
+function inheritDashboardThemeVars(target: HTMLElement, source?: HTMLElement | null): void {
+	const dashboardRoot = source?.closest('.apex-dashboard-root') ?? document.querySelector('.apex-dashboard-root');
+	if (!(dashboardRoot instanceof HTMLElement)) return;
+	const styles = getComputedStyle(dashboardRoot);
+	const themeVars = [
+		'--db-bg',
+		'--db-bg-card',
+		'--db-bg-card-hover',
+		'--db-bg-hover',
+		'--db-border-card',
+		'--db-text',
+		'--db-text-muted',
+		'--db-text-faint',
+		'--db-accent',
+		'--db-radius-md',
+		'--db-radius-sm',
+		'--db-font',
+	];
+	for (const name of themeVars) {
+		const value = styles.getPropertyValue(name).trim();
+		if (value) target.style.setProperty(name, value);
+	}
+}
+
 let taskDragSource: { cardId: string; taskIndex: number } | null = null;
 let docDragSource: { cardId: string; docIndex: number } | null = null;
 
@@ -385,8 +409,9 @@ export function renderSidebarPomodoro(
 	const todayCount = service.getTodayCount();
 	const statsHint = topRow.createDiv({
 		cls: 'dashboard-sidebar-pomodoro-stats-hint',
-		text: '🍅 ' + t('pomodoro.today') + ' ' + todayCount,
 	});
+	statsHint.createSpan({ cls: 'dashboard-sidebar-pomodoro-tomato', text: '🍅' });
+	const statsHintText = statsHint.createSpan({ text: t('pomodoro.today') + ' ' + todayCount });
 
 	topRow.createDiv({ cls: 'dashboard-sidebar-pomodoro-top-spacer' });
 
@@ -395,6 +420,8 @@ export function renderSidebarPomodoro(
 	const { activityTrigger, updateActivityDisplay } = createActivitySelector(topRow, service, currentActivity);
 
 	const statsBtn = topRow.createDiv({ cls: 'dashboard-sidebar-pomodoro-stats-btn' });
+	statsBtn.setAttribute('aria-label', t('pomodoro.statsTitle'));
+	statsBtn.setAttribute('title', t('pomodoro.statsTitle'));
 	setIcon(statsBtn, 'bar-chart-2');
 
 	// Ring
@@ -460,7 +487,7 @@ export function renderSidebarPomodoro(
 		const dots = dotsWrap.querySelectorAll('.dashboard-sidebar-pomodoro-dot');
 		dots.forEach((dot, i) => dot.toggleClass('dashboard-sidebar-pomodoro-dot--filled', i < s.completedWorkSessions));
 		const tc = service.getTodayCount();
-		statsHint.textContent = t('pomodoro.today') + ' ' + tc;
+		statsHintText.textContent = t('pomodoro.today') + ' ' + tc;
 	}
 
 	service.setOnTick(() => {
@@ -478,6 +505,21 @@ export function renderSidebarPomodoro(
 			service.start();
 			updateUI();
 		}
+	});
+
+	const resetBtn = widget.createEl('button', {
+		cls: 'dashboard-sidebar-pomodoro-reset-btn',
+		attr: {
+			type: 'button',
+			'aria-label': t('pomodoro.reset'),
+			title: t('pomodoro.reset'),
+		},
+	});
+	setIcon(resetBtn, 'rotate-ccw');
+	resetBtn.addEventListener('click', (event) => {
+		event.stopPropagation();
+		service.reset();
+		updateUI();
 	});
 
 	statsBtn.addEventListener('click', () => {
@@ -504,7 +546,7 @@ function createActivitySelector(
 		colorDot.style.backgroundColor = activityColor(initialActivity);
 		nameSpan = trigger.createSpan({ text: initialActivity });
 	} else {
-		nameSpan = trigger.createSpan({ text: t('pomodoro.tapToSetActivity'), cls: 'dashboard-pomodoro-activity-placeholder' });
+		nameSpan = trigger.createSpan({ text: t('pomodoro.activityLabel'), cls: 'dashboard-pomodoro-activity-placeholder' });
 	}
 
 	let panel: HTMLElement | null = null;
@@ -517,7 +559,7 @@ function createActivitySelector(
 			dot.style.backgroundColor = activityColor(name);
 			nameSpan = trigger.createSpan({ text: name });
 		} else {
-			nameSpan = trigger.createSpan({ text: t('pomodoro.tapToSetActivity'), cls: 'dashboard-pomodoro-activity-placeholder' });
+			nameSpan = trigger.createSpan({ text: t('pomodoro.activityLabel'), cls: 'dashboard-pomodoro-activity-placeholder' });
 		}
 	}
 
@@ -609,9 +651,10 @@ export function renderSidebarCountdown(
 
 	settingsBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const modal = new CountdownSettingsModal(app, settings, async (updates) => {
+		const modal = new CountdownSettingsModal(app, settings, async (updates: Partial<import('./types').DashboardSettings>) => {
 			Object.assign(settings, updates);
-			const plugin = (app as unknown as { plugins: { plugins: Record<string, { settings?: import('./types').DashboardSettings; saveSettings?: () => Promise<void>; refreshAllDashboards?: () => void }> } }).plugins?.plugins?.['apex-dashboard'];
+			const plugins = (app as unknown as { plugins: { plugins: Record<string, { settings?: import('./types').DashboardSettings; saveSettings?: () => Promise<void>; refreshAllDashboards?: () => void }> } }).plugins?.plugins;
+			const plugin = plugins?.['apex-dashboard'] ?? plugins?.dashboard;
 			if (plugin?.settings) {
 				Object.assign(plugin.settings!, updates);
 				await plugin.saveSettings?.();
@@ -682,6 +725,7 @@ export function renderSidebarCountdown(
 function showPomodoroStats(doc: Document, service: PomodoroService): void {
 	const overlay = doc.body.createDiv({ cls: 'dashboard-pomodoro-stats-overlay' });
 	const modal = overlay.createDiv({ cls: 'dashboard-pomodoro-stats-modal' });
+	inheritDashboardThemeVars(modal);
 
 	function close() {
 		doc.removeEventListener('keydown', onKey);
@@ -1433,6 +1477,7 @@ function openBookSearch(
 function showReadingStats(doc: Document, service: ReadingService): void {
 	const overlay = doc.body.createDiv({ cls: 'dashboard-pomodoro-stats-overlay' });
 	const modal = overlay.createDiv({ cls: 'dashboard-pomodoro-stats-modal' });
+	inheritDashboardThemeVars(modal);
 
 	function close() {
 		doc.removeEventListener('keydown', onKey);
@@ -1831,18 +1876,14 @@ function renderCard(card: DashboardCard, columnName: string, sectionType: string
 		if (resolved) {
 			const cover = el.createDiv({ cls: 'dashboard-project-cover' });
 			cover.style.backgroundImage = `url("${resolved}")`;
-			cover.setAttribute('draggable', 'true');
 		} else {
-			const cover = el.createDiv({ cls: 'dashboard-project-cover dashboard-project-cover--default' });
-			cover.setAttribute('draggable', 'true');
+			el.createDiv({ cls: 'dashboard-project-cover dashboard-project-cover--default' });
 		}
 	} else if (showCover) {
-		const cover = el.createDiv({ cls: 'dashboard-project-cover dashboard-project-cover--default' });
-		cover.setAttribute('draggable', 'true');
+		el.createDiv({ cls: 'dashboard-project-cover dashboard-project-cover--default' });
 	}
 
 	const header = el.createDiv({ cls: 'dashboard-card-header' });
-	header.setAttribute('draggable', 'true');
 
 	// Mobile: tap header to toggle card action buttons
 	header.addEventListener('touchstart', () => {
@@ -2744,16 +2785,7 @@ function showReminderPopup(
 	const popup = document.body.createDiv({ cls: 'dashboard-task-reminder-popup' });
 
 	// Inherit theme variables from dashboard root (popup is on body, outside theme scope)
-	const dashboardRoot = anchorBtn.closest('.apex-dashboard-root') as HTMLElement;
-	if (dashboardRoot) {
-		const rs = getComputedStyle(dashboardRoot);
-		const themeVars = ['--db-bg', '--db-bg-card', '--db-bg-card-hover', '--db-border-card',
-			'--db-text', '--db-text-muted', '--db-accent', '--db-radius-md', '--db-radius-sm', '--db-font'];
-		themeVars.forEach(v => {
-			const val = rs.getPropertyValue(v).trim();
-			if (val) popup.style.setProperty(v, val);
-		});
-	}
+	inheritDashboardThemeVars(popup, anchorBtn);
 
 	const rect = anchorBtn.getBoundingClientRect();
 	popup.style.position = 'fixed';

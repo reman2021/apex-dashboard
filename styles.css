@@ -1574,15 +1574,23 @@
 	border: none !important;
 	box-shadow: none !important;
 	color: rgba(255, 255, 255, 0.4);
-	padding: 2px;
-	font-size: 0.55em;
+	width: 26px;
+	height: 26px;
+	padding: 4px;
 	cursor: pointer;
 	opacity: 0;
 	transition: opacity 0.2s ease, color 0.2s ease;
 	display: flex;
 	align-items: center;
+	justify-content: center;
 	line-height: 1;
 	outline: none;
+}
+
+.dashboard-banner-edit-btn svg {
+	width: 15px;
+	height: 15px;
+	stroke-width: 1.8;
 }
 
 .dashboard-banner:hover .dashboard-banner-edit-btn {
@@ -2144,6 +2152,7 @@
 	flex-direction: column;
 	align-items: center;
 	gap: 4px;
+	position: relative;
 }
 
 .dashboard-sidebar-pomodoro-top {
@@ -2184,6 +2193,35 @@
 
 .dashboard-sidebar-pomodoro-stats-btn:hover {
 	opacity: 0.7;
+}
+
+.dashboard-sidebar-pomodoro-reset-btn {
+	position: absolute;
+	right: 8px;
+	bottom: 8px;
+	width: 22px;
+	height: 22px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: none !important;
+	border: none !important;
+	box-shadow: none !important;
+	color: var(--db-text-muted);
+	cursor: pointer;
+	opacity: 0.35;
+	padding: 0;
+	transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.dashboard-sidebar-pomodoro-reset-btn:hover {
+	opacity: 0.8;
+	color: var(--db-accent);
+}
+
+.dashboard-sidebar-pomodoro-reset-btn svg {
+	width: 14px;
+	height: 14px;
 }
 
 /* ===== Activity Selector (Pomodoro Widget) ===== */
@@ -2306,6 +2344,13 @@
 	transform: translateY(-50%);
 	white-space: nowrap;
 	pointer-events: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.dashboard-sidebar-pomodoro-tomato {
+	line-height: 1;
 }
 
 .dashboard-sidebar-pomodoro-phase {
@@ -2538,13 +2583,13 @@
 }
 
 .dashboard-pomodoro-donut-center-value {
-	fill: var(--db-text);
+	fill: var(--db-text, var(--text-normal));
 	font-size: 14px;
 	font-weight: 700;
 }
 
 .dashboard-pomodoro-donut-center-label {
-	fill: var(--db-text-muted);
+	fill: var(--db-text-muted, var(--text-muted));
 	font-size: 9px;
 }
 
@@ -4282,7 +4327,7 @@
 .dashboard-qa-item:hover {
 	background: var(--db-bg-btn-hover);
 	border-color: var(--db-accent);
-	transform: translateY(-1px);
+	transform: none;
 	box-shadow: 0 3px 10px rgba(0, 0, 0, 0.10);
 }
 
@@ -4905,9 +4950,10 @@
 }
 
 .dashboard-card:hover {
-	transform: translateY(-2px);
+	transform: none;
 	box-shadow: var(--db-shadow-card-hover);
 	background: var(--db-bg-card-hover);
+	border-color: var(--db-border-card-hover, var(--db-border-card));
 }
 
 .dashboard-card[draggable="true"]:active {
@@ -5541,6 +5587,18 @@
 	margin-bottom: 4px;
 }
 
+.dashboard-banner-modal {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.dashboard-banner-modal > label {
+	font-size: 0.9em;
+	font-weight: 500;
+	color: var(--db-text, var(--text-normal));
+}
+
 .dashboard-modal .dashboard-modal-form {
 	display: flex;
 	flex-direction: column;
@@ -5805,40 +5863,52 @@
 	gap: 10px;
 }
 
-.dashboard-modal-color-input {
-	width: 40px;
+.dashboard-modal-quote-color-input {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.dashboard-modal-quote-color-swatch {
+	width: 32px;
 	height: 32px;
-	border: 1px solid var(--db-border-card, rgba(255, 255, 255, 0.10));
-	border-radius: var(--db-radius-sm, 6px);
-	background: none;
+	border-radius: 999px;
+	border: 2px solid var(--db-border-card, rgba(255, 255, 255, 0.20)) !important;
+	box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06) !important;
 	cursor: pointer;
-	padding: 2px;
-}
-
-.dashboard-modal-color-input::-webkit-color-swatch-wrapper {
 	padding: 0;
+	min-width: 32px;
 }
 
-.dashboard-modal-color-input::-webkit-color-swatch {
-	border: none;
-	border-radius: 4px;
+.dashboard-modal-quote-color-swatch--default {
+	background-image: linear-gradient(135deg, transparent 46%, rgba(239, 68, 68, 0.75) 48%, rgba(239, 68, 68, 0.75) 52%, transparent 54%);
 }
 
-.dashboard-modal-color-reset {
+.dashboard-modal-quote-color-reset {
+	width: 30px;
+	height: 30px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	background: var(--db-bg-btn, rgba(255, 255, 255, 0.06)) !important;
 	border: 1px solid var(--db-border-btn, rgba(255, 255, 255, 0.12)) !important;
 	border-radius: var(--db-radius-sm, 6px);
 	color: var(--db-text-muted, rgba(255, 255, 255, 0.5));
-	padding: 6px 14px;
+	padding: 0;
 	cursor: pointer;
-	font-family: var(--db-font, var(--font-interface));
-	font-size: 0.85em;
 	transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
 
-.dashboard-modal-color-reset:hover {
+.dashboard-modal-quote-color-reset:hover {
 	background: var(--db-bg-btn-hover, rgba(255, 255, 255, 0.10)) !important;
 	color: var(--db-text, rgba(255, 255, 255, 0.8));
+}
+
+.dashboard-modal-quote-color-reset svg {
+	width: 14px;
+	height: 14px;
 }
 
 /* Modal Document Search */
@@ -6525,7 +6595,7 @@
 
 .apex-dashboard-root[data-theme="island"] .dashboard-card:hover {
 	box-shadow: 0 5px 0 0 #98b894, 0 8px 24px rgba(74, 103, 65, 0.15);
-	transform: translateY(-2px);
+	transform: none;
 	border-color: #82b87e;
 }
 
