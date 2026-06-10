@@ -18,12 +18,13 @@ export class SyncEngine {
 	private writeQueue: Promise<void> = Promise.resolve();
 	private callbacks: DataCallback[] = [];
 	private eventRef: ReturnType<typeof this.app.vault.on> | null = null;
-	private static readonly BACKUP_DIR = '.dashboard-backup';
+	private backupDir: string;
 	private static readonly MAX_BACKUPS = 5;
 
-	constructor(app: App, settings: DashboardSettings) {
+	constructor(app: App, settings: DashboardSettings, backupDir: string) {
 		this.app = app;
 		this.settings = settings;
+		this.backupDir = backupDir;
 	}
 
 	updateSettings(settings: DashboardSettings): void {
@@ -780,7 +781,7 @@ export class SyncEngine {
 	private async createBackup(currentContent: string): Promise<void> {
 		try {
 			const adapter = this.app.vault.adapter;
-			const dir = SyncEngine.BACKUP_DIR;
+			const dir = this.backupDir;
 			if (!(await adapter.exists(dir))) {
 				await adapter.mkdir(dir);
 			}

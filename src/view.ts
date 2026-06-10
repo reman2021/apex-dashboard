@@ -61,7 +61,8 @@ export class DashboardView extends ItemView {
 	constructor(leaf: WorkspaceLeaf, plugin: DashboardPlugin) {
 		super(leaf);
 		this.plugin = plugin;
-		this.sync = new SyncEngine(this.app, this.plugin.settings);
+		const backupDir = `${this.app.vault.configDir}/plugins/${this.plugin.manifest.id}/backups`;
+		this.sync = new SyncEngine(this.app, this.plugin.settings, backupDir);
 	}
 
 	getViewType(): string {

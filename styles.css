@@ -5140,7 +5140,7 @@
 }
 
 .dashboard-section-row[data-section-type="todo"] .dashboard-card {
-	height: 250px;
+	height: 300px;
 }
 
 .dashboard-section-row[data-section-type="todo"] .dashboard-task-list {
