@@ -1,5 +1,7 @@
 # Apex Dashboard
 
+> This project is a fork of [PandoraReads/apex-dashboard](https://github.com/PandoraReads/apex-dashboard), with additional feature refinements and maintenance changes.
+
 > Stop switching between Obsidian notes. One page. Everything you need. Memo your thoughts, crush your todos, track your projects — and make it look incredible doing it. [【中文版】](README_ZH.md)
 
 ## Screenshot
@@ -30,61 +32,62 @@ The left sidebar features decorative widgets for at-a-glance information:
 - **Weather Widget** — Real-time weather with current temperature, feels-like, humidity, wind speed, and a 5-day forecast with daily high/low temperatures. Powered by Open-Meteo (no API key needed). City search with geocoding autocomplete for precise location
 - **Heatmap Widget** — Track daily frontmatter data (mood, sleep, etc.) as a GitHub-style contribution heatmap. Configurable summary: streak days (⚡), completion rate (✅), or both
 - **Pomodoro Timer** — A focus timer with activity selector and session tracking. Start, pause, and stop timed sessions with a donut chart showing today's breakdown by activity
-- **Reading Tracker** — Track your reading sessions with a built-in timer. Add books from Douban search or manual input, time your reading sessions, and record progress with page numbers. Each book card shows cover image, author, and reading progress bar
-- **Countdown** — A customizable countdown to any target date, displayed as days or hours remaining
+- **Currently Reading** — Track your reading sessions with a built-in timer. Add book information manually, time your reading sessions, and record progress with page numbers. Each book card shows cover image, author, and reading progress bar
+- **Day Counter** — Up to three compact day counters for important target dates, displayed by days remaining
+
+### 🗃️ Library
+Create database-like sections from your vault notes. Filter by explicit frontmatter properties, select matching property values as chips, group Kanban cards by a property, and switch between grid, list, table, and Kanban views.
 
 ### 🎨 Banner
-A customizable banner with an inspirational quote and optional background image. Supports both local vault images and web URLs. Double-click to edit.
+A customizable banner with an inspirational quote, optional author, quote color, external quote library, and background image list. Quote library entries can include authors, and multiple background images rotate automatically. Supports both local vault images and web URLs. Double-click to edit.
 
 ### 🔄 Drag & Drop
 Drag task items within Todo cards to reorder. Drag document links between project/note cards.
 
 ### 🧩 Custom Sections
-Create sections with 4 built-in types — **Memo**, **Todo**, **Projects**, and **Notes** — each with its own layout and behavior. Mix and match to fit your workflow.
+Create sections with built-in types — **Memo**, **Todo**, **Projects**, **Notes**, **Dashboard**, and **Library** — each with its own layout and behavior. Mix and match to fit your workflow.
 
 ### 🕐 Recent Documents
 The sidebar shows recently edited files with relative timestamps, so you can jump back into your latest work.
 
 ## Themes
 
-11 handcrafted themes, each with distinct visual identity:
+14 handcrafted themes, each with distinct visual identity:
 
-| Theme | Style |
-|-------|-------|
-| **Earth** | Warm organic tones, parchment textures |
-| **Nordic** | Clean minimal with blue accents |
-| **Aurora** | Frosted glass with animated aurora gradient |
-| **Spring** | Rose glass with warm glow |
-| **Island** | Animal Crossing pastels, forest green and ocean blue |
-| **Tundra** | Cold gray + avocado green aurora, sage glass cards |
-| **Blossom** | Rose glass glow, transparent sections |
-| **Haze** | Smoky white-to-blue mist, extreme glass transparency |
-| **Ember** | Warm campfire smoke gradient, amber glow |
-| **Dusk** | Purple twilight mist, cloud-soft rounded |
-| **Jade** | Green bamboo mist, crisp jade-cut edges |
-
-All themes support both Obsidian light and dark modes.
+| Theme | Style | Obsidian base mode |
+|-------|-------|--------------------|
+| **Default** | Low-saturation colors derived from the current Obsidian theme | Light and dark |
+| **Earth** | Warm soil, wood, and moss tones with parchment warmth | Light and dark |
+| **Nordic** | Restrained ice gray, fjord blue, and cool cyan | Light and dark |
+| **Aurora** | Polar night glass with cyan, blue, and violet aurora glow | Light and dark |
+| **Spring** | Peach, blossom pink, warm gold, and soft green | Light and dark |
+| **Island** | Cream sand, sea-breeze mint, and deeper forest title accents | Light and dark |
+| **Tundra** | Cold gray-green, moss, and frost-white cards | Light and dark |
+| **Blossom** | Petal pink and muted rose with softened light-mode red accents | Light and dark |
+| **Matcha** | Warm matcha milk green with tea-dessert gold | Light only |
+| **Lilac** | Gentle lilac, gray-purple, and muted rose | Light only |
+| **Haze** | Blue-gray mist, soft silver, and glassy dark haze | Dark only |
+| **Ember** | Smoky charcoal with warm ember orange | Dark only |
+| **Jade** | Polished jade green, bamboo mist, and muted gold | Dark only |
+| **Eclipse** | Graphite, silver-gray, and eclipse-shadow contrast | Dark only |
 
 ## Settings
 
 - **Dashboard file** — customize the file path for your dashboard data
-- **Style** — choose from 11 visual themes
+- **Dashboard title** — customize the dashboard tab name
+- **Open dashboard on startup** — optionally open the dashboard as the first workspace tab when the vault opens
+- **Style** — choose from 14 visual themes
 - **Language** — English or Chinese interface
 - **Recent documents count** — control how many recent files appear
-- **Sidebar widgets** — Weather, Heatmap, Pomodoro, Reading, Countdown. Enable/disable and configure each widget independently
-- **Reading settings** — Toggle reading tracker, enable/disable session completion sound
+- **Sidebar widgets** — Weather, Heatmap, Pomodoro, Currently Reading, Day Counter. Enable/disable and configure each widget independently
+- **Reading settings** — Toggle Currently Reading, enable/disable session completion sound
 
 ## Installation
 
-### From Obsidian Community Plugins
-1. Open Settings > Community Plugins
-2. Browse and search for "Apex Dashboard"
-3. Click Install, then Enable
-
 ### Manual Installation
-1. Download the latest release from [GitHub Releases](https://github.com/pandorareads/apex-dashboard/releases)
-2. Extract into your vault's `.obsidian/plugins/apex-dashboard/` folder
-3. Open Settings > Community Plugins and enable "Apex Dashboard"
+1. Download or build this fork.
+2. Copy `main.js`, `styles.css`, and `manifest.json` into your vault's `.obsidian/plugins/apex-dashboard/` folder.
+3. Open Settings > Community Plugins and enable "Apex Dashboard".
 
 ## Usage
 
@@ -92,12 +95,37 @@ All themes support both Obsidian light and dark modes.
 2. A `dashboard.md` file is automatically created in your vault root
 3. All changes are saved directly to the file — it's your data, in plain text
 
+Common workflows:
+
+- Edit the banner to set a quote, optional author, quote color, quote library path, and one or more background images.
+- Use Todo card actions to archive completed or inactive cards. Archived cards keep their archive date and can be restored from the archived-card list.
+- Open Day Counter settings from the sidebar widget, add up to three target dates, and pick dates from the calendar popup.
+- Use Currently Reading to manually enter book information, then track reading sessions and page progress.
+- Configure Library sections by selecting explicit frontmatter properties and choosing existing property values as filters.
+
 > **Note:** Deleting, renaming, or reordering sections must be done by editing the `dashboard.md` file directly. Any changes made to the note will take effect in the dashboard view immediately.
 
 ## What's New
 
+### Current fork updates
+- **Fork notice and manifest alignment** — Updated project metadata for the `apex-dashboard` fork and fixed plugin activation issues caused by mismatched manifest IDs
+- **Banner quote library** — Added Vault-relative quote library support. Each non-empty line can be `Quote | Author`, `Quote - Author`, or a quote without an author
+- **Banner editor simplification** — Removed the old quote collection editor and kept quote randomization through the quote library only
+- **Background image list** — Replaced the single background image path field with a background image list. One image stays fixed; multiple images rotate about every 30 minutes
+- **Quote color picker** — Quote color now uses a circular color swatch with reset support
+- **Todo archive management** — Todo cards can be archived, restored, and reviewed in a compact archived-card list with archive dates
+- **Day Counter redesign** — Replaced the old countdown timer with up to three compact day counters, calendar date picking, and day-only display
+- **Currently Reading redesign** — Renamed Reading Tracker to Currently Reading and replaced book search with manual book information entry
+- **Library filter configuration** — Database sections now list explicit note properties and selectable property values for filtering
+- **Theme-synced modals** — Dashboard modals such as Library configuration, banner editing, card editing, widget setup, and Day Counter settings now inherit the active dashboard theme
+- **Startup dashboard option** — Added an optional setting to open the dashboard automatically when the vault opens
+- **Pomodoro refinements** — Added a reset button, stabilized the tomato stats icon, and fixed dark-mode text color in the focus statistics donut chart
+- **Hover and layout fixes** — Removed upward hover movement from dashboard cards and quick action items, fixed Todo card height, and prevented Todo task changes from resetting banner rotation
+- **Dashboard title setting** — Added a custom dashboard tab title setting with fallback to the default name
+- **Chinese usage guide** — Updated the detailed Chinese usage guide to cover setup, banner, quick actions, Pomodoro, heatmap/tracker, Day Counter, Currently Reading, Todo archiving, Library filters, themes, and troubleshooting
+
 ### 1.1.3
-- **Mobile widget bar redesign** — Replaced the overlapping tab buttons with a collapsible strip below the banner. Tap the strip to reveal wider bookmark tabs (Pomodoro, Reading, Lunar), then tap a tab to expand its widget panel
+- **Mobile widget bar redesign** — Replaced the overlapping tab buttons with a collapsible strip below the banner. Tap the strip to reveal wider bookmark tabs (Pomodoro, Currently Reading, Lunar), then tap a tab to expand its widget panel
 - **Theme-aware tab colors** — Tab icons now transition from gray (inactive) to the theme primary text color (active), adapting to both light and dark themes
 - **Updated widget icons** — Pomodoro uses hourglass icon, Lunar uses moon icon for clearer visual identity
 - **Custom dialogs** — Replaced native browser dialogs with Obsidian-styled custom modals
@@ -114,7 +142,7 @@ All themes support both Obsidian light and dark modes.
 - **Write race condition fix** — Fixed a race condition where rapid updates could cause the file watcher to overwrite newer data with older content
 
 ### v1.1.0
-- **Reading Tracker widget** — Full reading session management in the sidebar: add books from Douban search or manual input, start/pause/stop reading timer, and save sessions with page progress
+- **Currently Reading widget** — Full reading session management in the sidebar: add book information manually, start/pause/stop reading timer, and save sessions with page progress
 - **Book cards** — Each active book displays cover image, title, author, reading progress bar, and today's reading time. Cover images support both web URLs and local vault paths
 - **Edit book info** — Hover a book card to reveal edit (pencil) and remove (x) buttons. Edit modal supports changing title, author, total pages, and cover image URL/path
 - **Reading statistics** — Full stats page with total reading time, today's reading, book count, streak days, book list by time range (week/month/year), and recent session records. Delete individual records or entire book histories
@@ -191,7 +219,6 @@ All themes support both Obsidian light and dark modes.
 
 - Obsidian v0.15.0+
 - Desktop and mobile
-- All themes work in both light and dark Obsidian modes
 
 ## License
 
