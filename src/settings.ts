@@ -161,22 +161,24 @@ export class DashboardSettingTab extends PluginSettingTab {
 					this.display();
 				}));
 
-		new Setting(weatherCard)
-			.setName(t('settings.widgetWeatherCity'))
-			.setDesc(t('settings.widgetWeatherCityDesc'))
-			.addText(text => {
-				text
-					.setPlaceholder(t('settings.widgetWeatherCityPlaceholder'))
-					.setValue(this.plugin.settings.widgetWeatherCity)
-					.onChange(async (value) => {
-						this.plugin.settings = {
-							...this.plugin.settings,
-							widgetWeatherCity: value.trim(),
-						};
-						await this.plugin.saveSettings();
-					});
-				this.attachCitySuggest(text.inputEl);
-			});
+		if (this.plugin.settings.widgetWeatherEnabled) {
+			new Setting(weatherCard)
+				.setName(t('settings.widgetWeatherCity'))
+				.setDesc(t('settings.widgetWeatherCityDesc'))
+				.addText(text => {
+					text
+						.setPlaceholder(t('settings.widgetWeatherCityPlaceholder'))
+						.setValue(this.plugin.settings.widgetWeatherCity)
+						.onChange(async (value) => {
+							this.plugin.settings = {
+								...this.plugin.settings,
+								widgetWeatherCity: value.trim(),
+							};
+							await this.plugin.saveSettings();
+						});
+					this.attachCitySuggest(text.inputEl);
+				});
+		}
 
 		// --- Pomodoro card ---
 		const pomodoroCard = containerEl.createDiv({ cls: 'dashboard-widget-settings-card' });
