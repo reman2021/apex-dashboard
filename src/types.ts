@@ -252,4 +252,7 @@ export interface RenderCallbacks {
 	onTaskReminderEdit(cardId: string, taskIndex: number, reminder: string | undefined): void;
 	onAddFromTemplate(columnName: string): void;
 	onLibraryConfigChange(columnName: string, config: LibraryConfig): void;
+	onHeatmapAdd(columnName: string): void;
+	onHeatmapEdit(columnName: string, itemId: string): void;
+	onHeatmapDelete(columnName: string, itemId: string): void;
 }

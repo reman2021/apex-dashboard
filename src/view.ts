@@ -203,30 +203,6 @@ export class DashboardView extends ItemView {
 		// Library config event delegation
 		kanban.addEventListener('dashboard-library-config', ((e: CustomEvent) => {
 			const { columnName } = e.detail as { columnName: string };
-		// Heatmap event delegation
-		kanban.addEventListener('dashboard-heatmap-add', ((e: CustomEvent) => {
-			const { columnName } = e.detail as { columnName: string };
-			this.openHeatmapConfigModal(columnName);
-		}) as EventListener);
-
-		kanban.addEventListener('dashboard-heatmap-edit', ((e: CustomEvent) => {
-			const { columnName, itemId } = e.detail as { columnName: string; itemId: string };
-			const col = this.data?.columns.find(c => c.name === columnName);
-			const item = col?.heatmapItems?.find(i => i.id === itemId);
-			if (item) this.openHeatmapConfigModal(columnName, item);
-		}) as EventListener);
-
-		kanban.addEventListener('dashboard-heatmap-delete', ((e: CustomEvent) => {
-			const { columnName, itemId } = e.detail as { columnName: string; itemId: string };
-			import('./confirm-dialog').then(({ showConfirmDialog }) =>
-				showConfirmDialog(this.app, {
-					title: t('common.confirmDelete'),
-					message: t('common.confirmDeleteMessage'),
-				}).then(confirmed => {
-					if (confirmed) this.sync.deleteHeatmapItem(columnName, itemId);
-				})
-			);
-		}) as EventListener);
 			this.openLibraryConfigModal(columnName);
 		}) as EventListener);
 
@@ -770,6 +746,22 @@ export class DashboardView extends ItemView {
 			onTaskReminderEdit: (cardId: string, taskIndex: number, reminder: string | undefined) => this.sync.editTaskReminder(cardId, taskIndex, reminder),
 			onAddFromTemplate: (columnName: string) => this.openTemplatePicker(columnName),
 				onLibraryConfigChange: (columnName: string, config: LibraryConfig) => this.sync.updateLibraryConfig(columnName, config),
+			onHeatmapAdd: (columnName: string) => this.openHeatmapConfigModal(columnName),
+			onHeatmapEdit: (columnName: string, itemId: string) => {
+				const col = this.data?.columns.find(c => c.name === columnName);
+				const item = col?.heatmapItems?.find(i => i.id === itemId);
+				if (item) this.openHeatmapConfigModal(columnName, item);
+			},
+			onHeatmapDelete: (columnName: string, itemId: string) => {
+				import('./confirm-dialog').then(({ showConfirmDialog }) =>
+					showConfirmDialog(this.app, {
+						title: t('common.confirmDelete'),
+						message: t('common.confirmDeleteMessage'),
+					}).then(confirmed => {
+						if (confirmed) this.sync.deleteHeatmapItem(columnName, itemId);
+					})
+				);
+			},
 		};
 	}
 

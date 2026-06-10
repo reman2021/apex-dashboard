@@ -1798,19 +1798,13 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 		});
 		setIcon(addHeatmapBtn, 'plus');
 		addHeatmapBtn.addEventListener('click', () => {
-			const event = new CustomEvent('dashboard-heatmap-add', { detail: { columnName: column.name }, bubbles: true });
-			el.dispatchEvent(event);
+			callbacks.onHeatmapAdd(column.name);
 		});
 
 		const heatmapContainer = el.createDiv({ cls: 'dashboard-heatmap-section' });
 		const items = column.heatmapItems ?? [];
-		if (items.length === 0) {
-			const emptyEl = heatmapContainer.createDiv({ cls: 'dashboard-heatmap-empty' });
-			emptyEl.createSpan({ text: t('heatmap.addItem') });
-		} else {
-			for (const item of items) {
-				renderHeatmapItem(heatmapContainer, item, column.name, callbacks, app);
-			}
+		for (const item of items) {
+			renderHeatmapItem(heatmapContainer, item, column.name, callbacks, app);
 		}
 		return el;
 	}
