@@ -2,6 +2,7 @@ import { App, Modal, setIcon } from 'obsidian';
 import type { QuickAction } from './types';
 import { PRESET_ACTIONS } from './types';
 import { t } from './i18n';
+import { inheritDashboardThemeVars } from './theme-utils';
 
 function actionKey(action: QuickAction, isPreset: boolean): string {
 	return isPreset ? `p:${action.target}` : `c:${action.target}`;
@@ -200,6 +201,7 @@ export class AddActionModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.addClass('dashboard-modal');
+		inheritDashboardThemeVars(contentEl);
 		contentEl.createEl('h2', { text: t('quickActions.addAction') });
 
 		const tabBar = contentEl.createDiv({ cls: 'dashboard-action-tabs' });
@@ -343,6 +345,7 @@ export class DocSearchModal extends Modal {
 	onOpen(): void {
 		const { contentEl } = this;
 		contentEl.addClass('dashboard-modal');
+		inheritDashboardThemeVars(contentEl);
 		contentEl.createEl('h2', { text: t('quickActions.fileTab') });
 
 		const searchWrap = contentEl.createDiv({ cls: 'dashboard-docsearch' });

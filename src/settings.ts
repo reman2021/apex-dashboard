@@ -368,14 +368,11 @@ export class DashboardSettingTab extends PluginSettingTab {
 				if (results.length === 0) return;
 
 				dropdown = inputEl.ownerDocument.createElement('div');
-				dropdown.className = 'dashboard-city-suggest';
+				dropdown.className = 'apex-dashboard-root dashboard-city-suggest';
+				dropdown.dataset.theme = normalizeStylePreset(this.plugin.settings.stylePreset, getObsidianThemeMode());
 				Object.assign(dropdown.style, {
 					position: 'absolute',
 					zIndex: '100',
-					background: 'var(--background-secondary)',
-					border: '1px solid var(--background-modifier-border)',
-					borderRadius: '6px',
-					boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
 					maxHeight: '200px',
 					overflowY: 'auto',
 					width: inputEl.getBoundingClientRect().width + 'px',
@@ -389,18 +386,6 @@ export class DashboardSettingTab extends PluginSettingTab {
 					const item = dropdown.createDiv({ cls: 'dashboard-city-suggest-item' });
 					const label = r.admin1 ? `${r.name}, ${r.admin1}, ${r.country}` : `${r.name}, ${r.country}`;
 					item.textContent = label;
-					Object.assign(item.style, {
-						padding: '6px 10px',
-						cursor: 'pointer',
-						fontSize: '0.85em',
-						borderBottom: '1px solid var(--background-modifier-border)',
-					});
-					item.addEventListener('mouseenter', () => {
-						item.style.background = 'var(--background-modifier-hover)';
-					});
-					item.addEventListener('mouseleave', () => {
-						item.style.background = '';
-					});
 					item.addEventListener('click', async () => {
 						inputEl.value = r.name;
 						this.plugin.settings = {
