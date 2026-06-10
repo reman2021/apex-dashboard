@@ -196,7 +196,7 @@ export class SyncEngine {
 		await this.writeToDisk();
 	}
 
-	async updateCard(cardId: string, updates: Partial<Pick<DashboardCard, 'title' | 'body' | 'dueDate' | 'color' | 'coverImage' | 'width' | 'size' | 'gridCols' | 'gridRows' | 'gridCol' | 'gridRow'>>): Promise<void> {
+	async updateCard(cardId: string, updates: Partial<Pick<DashboardCard, 'title' | 'body' | 'dueDate' | 'color' | 'coverImage' | 'archived' | 'archivedAt' | 'width' | 'size' | 'gridCols' | 'gridRows' | 'gridCol' | 'gridRow'>>): Promise<void> {
 		if (!this.data) return;
 
 		this.data = {
@@ -244,6 +244,14 @@ export class SyncEngine {
 		await this.writeToDisk();
 	}
 
+	async archiveCard(cardId: string): Promise<void> {
+		await this.updateCard(cardId, { archived: true, archivedAt: getDateStamp() });
+	}
+
+	async restoreCard(cardId: string): Promise<void> {
+		await this.updateCard(cardId, { archived: false, archivedAt: '' });
+	}
+
 	async addCard(columnName: string, overrides?: Partial<DashboardCard>): Promise<void> {
 		if (!this.data) return;
 		const column = this.data.columns.find(col => col.name === columnName);
@@ -266,6 +274,8 @@ export class SyncEngine {
 			blockquote: '',
 			color: '',
 			coverImage: '',
+			archived: false,
+			archivedAt: '',
 				width: 0,
 			size: 'M' as const,
 			gridCols: 0,
@@ -552,6 +562,54 @@ export class SyncEngine {
 		await this.writeToDisk();
 	}
 
+	async addHeatmapItem(columnName: string, item: import('./types').HeatmapItem): Promise<void> {
+		if (!this.data) return;
+
+		this.data = {
+			...this.data,
+			columns: this.data.columns.map(col =>
+				col.name === columnName
+					? { ...col, heatmapItems: [...(col.heatmapItems ?? []), item] }
+					: col
+			),
+		};
+		await this.writeToDisk();
+	}
+
+	async updateHeatmapItem(columnName: string, itemId: string, updates: Partial<import('./types').HeatmapItem>): Promise<void> {
+		if (!this.data) return;
+
+		this.data = {
+			...this.data,
+			columns: this.data.columns.map(col =>
+				col.name === columnName
+					? {
+						...col,
+						heatmapItems: (col.heatmapItems ?? []).map(item =>
+							item.id === itemId ? { ...item, ...updates } : item
+						),
+					}
+					: col
+			),
+		};
+		await this.writeToDisk();
+	}
+
+	async deleteHeatmapItem(columnName: string, itemId: string): Promise<void> {
+		if (!this.data) return;
+
+		this.data = {
+			...this.data,
+			columns: this.data.columns.map(col =>
+				col.name === columnName
+					? { ...col, heatmapItems: (col.heatmapItems ?? []).filter(item => item.id !== itemId) }
+					: col
+			),
+		};
+		await this.writeToDisk();
+	}
+
+
 	private getDefaultCardTitle(columnName: string, sectionType?: string): string {
 		const effective = sectionType?.toLowerCase();
 		if (effective === 'memo' || (!effective && columnName.toLowerCase() === 'memo')) {
@@ -746,4 +804,12 @@ function simpleHash(str: string): string {
 		hash |= 0;
 	}
 	return hash.toString(36);
+}
+
+function getDateStamp(): string {
+	const now = new Date();
+	const y = now.getFullYear();
+	const m = String(now.getMonth() + 1).padStart(2, '0');
+	const d = String(now.getDate()).padStart(2, '0');
+	return `${y}-${m}-${d}`;
 }

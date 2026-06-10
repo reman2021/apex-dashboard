@@ -3,6 +3,7 @@ import { t } from './i18n';
 interface ConfirmOptions {
 	title: string;
 	message: string;
+	confirmText?: string;
 }
 
 export function showConfirmDialog(_app: unknown, options: ConfirmOptions): Promise<boolean> {
@@ -35,7 +36,7 @@ export function showConfirmDialog(_app: unknown, options: ConfirmOptions): Promi
 		});
 
 		const deleteBtn = actions.createEl('button', {
-			text: t('common.delete'),
+			text: options.confirmText ?? t('common.delete'),
 			cls: 'dashboard-confirm-delete',
 		});
 		deleteBtn.addEventListener('click', () => {

@@ -2,6 +2,7 @@ import { App, Modal } from 'obsidian';
 import type { TrackerConfig, TrackerStyle } from './types';
 import { suggestTrackerKeys } from './tracker-service';
 import { t } from './i18n';
+import { inheritDashboardThemeVars } from './theme-utils';
 
 export class TrackerConfigModal extends Modal {
 	private onSave: (title: string, config: TrackerConfig) => void;
@@ -25,6 +26,7 @@ export class TrackerConfigModal extends Modal {
 		const { contentEl, containerEl } = this;
 		containerEl.dataset.theme = this.theme;
 		contentEl.addClass('dashboard-modal');
+		inheritDashboardThemeVars(contentEl);
 		contentEl.createEl('h2', { text: t('tracker.configTitle') });
 
 		const form = contentEl.createDiv({ cls: 'dashboard-modal-form' });

@@ -3,14 +3,11 @@ import type { Language } from './i18n';
 export interface DashboardSettings {
 	dashboardFile: string;
 	dashboardTitle: string;
+	openDashboardOnStartup: boolean;
 	recentDocCount: number;
 	language: Language;
 	stylePreset: string;
 	widgetWeatherEnabled: boolean;
-	widgetHeatmapEnabled: boolean;
-	widgetTrackerKey: string;
-	widgetTrackerDays: number;
-	widgetTrackerSummary: 'streak' | 'rate' | 'both' | 'off';
 	widgetWeatherCity: string;
 	widgetWeatherLat: number;
 	widgetWeatherLon: number;
@@ -24,6 +21,7 @@ export interface DashboardSettings {
 	widgetLunarEnabled: boolean;
 	widgetOrder: string[];
 	countdownEnabled: boolean;
+	countdowns: CountdownItem[];
 	countdownTargetDate: string;
 	countdownDisplayMode: 'days' | 'hours' | 'minutes';
 	countdownReminderDays: number;
@@ -33,17 +31,21 @@ export interface DashboardSettings {
 	taskTemplates: TaskTemplate[];
 }
 
+export interface CountdownItem {
+	id: string;
+	targetDate: string;
+	displayMode: 'days' | 'hours' | 'minutes';
+	label: string;
+}
+
 export const DEFAULT_SETTINGS: DashboardSettings = {
 	dashboardFile: 'dashboard',
 	dashboardTitle: '',
+	openDashboardOnStartup: false,
 	recentDocCount: 5,
 	language: 'en',
-	stylePreset: 'earth',
+	stylePreset: 'default',
 	widgetWeatherEnabled: false,
-	widgetHeatmapEnabled: false,
-	widgetTrackerKey: '',
-	widgetTrackerDays: 30,
-	widgetTrackerSummary: 'streak',
 	widgetWeatherCity: 'Shanghai',
 	widgetWeatherLat: 31.23,
 	widgetWeatherLon: 121.47,
@@ -55,8 +57,9 @@ export const DEFAULT_SETTINGS: DashboardSettings = {
 	pomodoroAutoStartBreak: true,
 	pomodoroSoundEnabled: true,
 	widgetLunarEnabled: true,
-	widgetOrder: ['weather', 'lunar', 'heatmap', 'pomodoro', 'reading', 'countdown'],
+	widgetOrder: ['weather', 'lunar', 'pomodoro', 'reading', 'countdown'],
 	countdownEnabled: false,
+	countdowns: [],
 	countdownTargetDate: '',
 	countdownDisplayMode: 'days',
 	countdownReminderDays: 0,
@@ -161,6 +164,8 @@ export interface DashboardCard {
 	blockquote: string;
 	color: string;
 	coverImage: string;
+	archived: boolean;
+	archivedAt: string;
 	width: number;
 	size: CardSize;
 	gridCols: number;
@@ -190,12 +195,21 @@ export interface LibraryConfig {
 		quickDateFilter?: { property: 'created' | 'modified'; start: string; end: string };
 }
 
+export interface HeatmapItem {
+	id: string;
+	label: string;
+	key: string;
+	days: number;
+	color?: string;
+}
+
 export interface DashboardColumn {
 	name: string;
 	color: string;
 	sectionType?: string;
 	cards: DashboardCard[];
 	libraryConfig?: LibraryConfig;
+	heatmapItems?: HeatmapItem[];
 }
 
 export interface DashboardData {
@@ -209,6 +223,8 @@ export interface DashboardData {
 export interface RenderCallbacks {
 	onCardEdit(card: DashboardCard): void;
 	onCardDelete(cardId: string): void;
+	onCardArchive(cardId: string): void;
+	onCardRestore(cardId: string): void;
 	onCheckboxToggle(cardId: string, taskIndex: number, checked: boolean): void;
 	onTaskAdd(cardId: string, text: string): void;
 	onTaskDelete(cardId: string, taskIndex: number): void;

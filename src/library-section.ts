@@ -99,9 +99,14 @@ function evaluateFilter(
 	filter: PropertyFilter,
 	cache: ReturnType<typeof import('obsidian').App.prototype.metadataCache.getFileCache>,
 ): boolean {
-		if (filter.values.length === 0 && !filter.dateRange) return true;
-
 	const prop = filter.property;
+	if (!prop) return true;
+
+	if (filter.values.length === 0 && !filter.dateRange) {
+		if (prop === 'tags') return Boolean(fm.tags) || Boolean(cache?.tags?.length);
+		if (prop === 'modified' || prop === 'created' || prop === 'path') return true;
+		return fm[prop] != null;
+	}
 
 	if (prop === 'tags') {
 		const fileTags: string[] = [];

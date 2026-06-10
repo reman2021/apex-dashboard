@@ -10,11 +10,12 @@ import { fetchWeather, getCachedWeather, getWeatherEmoji, getWeatherDescription 
 import { readTrackerData } from './tracker-service';
 import type { PomodoroService } from './pomodoro-service';
 import type { ReadingService } from './reading-service';
-import { searchBooks, downloadCoverAsBlobUrl } from './book-service';
+import { downloadCoverAsBlobUrl } from './book-service';
 import { activityColor } from './pomodoro-service';
 import { renderSidebarLunarWidget } from './lunar-widget';
 import type { HolidayInfo } from './holiday-service';
-import { CountdownSettingsModal } from './countdown-modal';
+import { CountdownSettingsModal, getCountdownItems } from './countdown-modal';
+import { inheritDashboardThemeVars } from './theme-utils';
 import { Chart, LineController, LineElement, PointElement, BarController, BarElement, LinearScale, CategoryScale, Filler, Tooltip } from 'chart.js';
 
 Chart.register(LineController, LineElement, PointElement, BarController, BarElement, LinearScale, CategoryScale, Filler, Tooltip);
@@ -40,30 +41,6 @@ function getCSSVar(name: string): string {
 	const el = document.querySelector('.apex-dashboard-root');
 	if (!el) return '';
 	return getComputedStyle(el).getPropertyValue(name).trim();
-}
-
-function inheritDashboardThemeVars(target: HTMLElement, source?: HTMLElement | null): void {
-	const dashboardRoot = source?.closest('.apex-dashboard-root') ?? document.querySelector('.apex-dashboard-root');
-	if (!(dashboardRoot instanceof HTMLElement)) return;
-	const styles = getComputedStyle(dashboardRoot);
-	const themeVars = [
-		'--db-bg',
-		'--db-bg-card',
-		'--db-bg-card-hover',
-		'--db-bg-hover',
-		'--db-border-card',
-		'--db-text',
-		'--db-text-muted',
-		'--db-text-faint',
-		'--db-accent',
-		'--db-radius-md',
-		'--db-radius-sm',
-		'--db-font',
-	];
-	for (const name of themeVars) {
-		const value = styles.getPropertyValue(name).trim();
-		if (value) target.style.setProperty(name, value);
-	}
 }
 
 let taskDragSource: { cardId: string; taskIndex: number } | null = null;
@@ -116,7 +93,7 @@ export function renderSidebarWidgets(
 	holidayData?: Record<string, HolidayInfo>,
 	onWidgetReorder?: (order: string[]) => void,
 ): void {
-	const anyEnabled = settings.widgetWeatherEnabled || settings.widgetHeatmapEnabled || settings.pomodoroEnabled || settings.widgetLunarEnabled || settings.countdownEnabled || settings.readingEnabled;
+	const anyEnabled = settings.widgetWeatherEnabled || settings.pomodoroEnabled || settings.widgetLunarEnabled || settings.countdownEnabled || settings.readingEnabled;
 	if (!anyEnabled) return;
 
 	const widgetArea = container.createDiv({ cls: 'dashboard-sidebar-widgets' });
@@ -131,9 +108,6 @@ export function renderSidebarWidgets(
 	}
 	if (settings.widgetWeatherEnabled) {
 		enabled.push({ key: 'weather', render: () => renderSidebarWeather(widgetArea, settings, app) });
-	}
-	if (settings.widgetHeatmapEnabled) {
-		enabled.push({ key: 'heatmap', render: () => renderSidebarHeatmap(widgetArea, settings, app) });
 	}
 	if (settings.pomodoroEnabled && pomodoroService) {
 		enabled.push({ key: 'pomodoro', render: () => renderSidebarPomodoro(widgetArea, pomodoroService, settings) });
@@ -304,95 +278,6 @@ function renderSidebarWeatherContent(el: HTMLElement, data: import('./types').We
 		}
 	}
 }
-
-function renderSidebarHeatmap(container: HTMLElement, settings: import('./types').DashboardSettings, app: App): void {
-	if (!settings.widgetTrackerKey) return;
-
-	const widget = container.createDiv({ cls: 'dashboard-sidebar-widget dashboard-sidebar-heatmap' });
-
-	const data = readTrackerData(app, '', settings.widgetTrackerKey, settings.widgetTrackerDays);
-	const validPoints = data.filter(p => p.value !== null);
-
-	if (validPoints.length === 0) return;
-
-	const values = data.map(p => p.value);
-	const minVal = Math.min(...values.filter((v): v is number => v !== null));
-	const maxVal = Math.max(...values.filter((v): v is number => v !== null));
-	const accentColor = getCSSVar('--db-accent') || '#6366f1';
-
-	const firstDate = data[0] ? new Date(data[0].date + 'T00:00:00') : new Date();
-	const startDayOfWeek = firstDate.getDay();
-	const mondayOffset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-
-	const weeks: (import('./types').TrackerDataPoint | null)[][] = [];
-	let currentWeek: (import('./types').TrackerDataPoint | null)[] = [];
-	for (let i = 0; i < mondayOffset; i++) {
-		currentWeek.push(null);
-	}
-	for (const point of data) {
-		currentWeek.push(point);
-		if (currentWeek.length === 7) {
-			weeks.push(currentWeek);
-			currentWeek = [];
-		}
-	}
-	if (currentWeek.length > 0) {
-		weeks.push(currentWeek);
-	}
-
-	const visibleWeeks = weeks.slice(-20);
-	const range = maxVal - minVal || 1;
-
-	const grid = widget.createDiv({ cls: 'dashboard-sidebar-heatmap-grid' });
-	grid.style.display = 'grid';
-	grid.style.gridTemplateColumns = `repeat(${visibleWeeks.length}, 8px)`;
-	grid.style.gridTemplateRows = 'repeat(7, 8px)';
-	grid.style.gap = '2px';
-
-	for (const week of visibleWeeks) {
-		for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
-			const point = week[dayIdx] ?? null;
-			const cell = grid.createDiv({ cls: 'dashboard-sidebar-heatmap-cell' });
-			cell.style.width = '8px';
-			cell.style.height = '8px';
-			cell.style.borderRadius = '2px';
-
-			if (point === null || point.value === null) {
-				cell.addClass('dashboard-sidebar-heatmap-cell--empty');
-			} else {
-				const intensity = (point.value - minVal) / range;
-				cell.style.backgroundColor = accentColor;
-				cell.style.opacity = String(0.15 + intensity * 0.85);
-				cell.title = `${point.date}: ${point.value}`;
-			}
-		}
-	}
-
-	// Mini stats
-	const summaryMode = settings.widgetTrackerSummary ?? 'streak';
-	if (summaryMode === 'off') return;
-
-	let streak = 0;
-	for (let i = validPoints.length - 1; i >= 0; i--) {
-		if (validPoints[i]!.value !== null) streak++;
-		else break;
-	}
-	const completionRate = Math.round((validPoints.length / data.length) * 100);
-
-	const stats = widget.createDiv({ cls: 'dashboard-sidebar-heatmap-stats' });
-
-	if (summaryMode === 'streak' || summaryMode === 'both') {
-		const streakEl = stats.createSpan({ cls: 'dashboard-sidebar-heatmap-summary' });
-		streakEl.createSpan({ cls: 'dashboard-sidebar-heatmap-icon', text: '⚡' });
-		streakEl.createSpan({ text: t('heatmap.streak', { count: streak }) });
-	}
-	if (summaryMode === 'rate' || summaryMode === 'both') {
-		const rateEl = stats.createSpan({ cls: 'dashboard-sidebar-heatmap-summary' });
-		rateEl.createSpan({ cls: 'dashboard-sidebar-heatmap-icon', text: '✅' });
-		rateEl.createSpan({ text: t('heatmap.rate', { rate: completionRate }) });
-	}
-}
-
 export function renderSidebarPomodoro(
 	container: HTMLElement,
 	service: PomodoroService,
@@ -666,60 +551,42 @@ export function renderSidebarCountdown(
 
 	// Content
 	const content = widget.createDiv({ cls: 'dashboard-sidebar-countdown-content' });
+	const renderContent = () => {
+		content.empty();
 
-	const targetDate = settings.countdownTargetDate;
-	if (!targetDate) {
-		content.createDiv({ cls: 'dashboard-sidebar-countdown-placeholder', text: t('countdown.setTarget') });
-		return;
-	}
-
-	const target = targetDate.includes('T') ? new Date(targetDate) : new Date(targetDate + 'T00:00:00');
-	const now = new Date();
-
-	if (now >= target) {
-		if (settings.countdownLabel) {
-			content.createDiv({ cls: 'dashboard-sidebar-countdown-until', text: t('countdown.untilLabel', { label: settings.countdownLabel }) });
-		}
-		content.createDiv({ cls: 'dashboard-sidebar-countdown-expired', text: t('countdown.expired') });
-		return;
-	}
-
-	const diffMs = target.getTime() - now.getTime();
-	const remainDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-	const remainHours = Math.ceil(diffMs / (1000 * 60 * 60));
-	const displayMode = settings.countdownDisplayMode;
-	const remainMinutes = Math.ceil(diffMs / (1000 * 60));
-	const currentVal = displayMode === 'minutes' ? remainMinutes : displayMode === 'hours' ? remainHours : remainDays;
-
-	// "距离xx还有" label above the number
-	if (settings.countdownLabel) {
-		content.createDiv({ cls: 'dashboard-sidebar-countdown-until', text: t('countdown.untilLabel', { label: settings.countdownLabel }) });
-	}
-
-	// Value display with flip
-	const flipWrap = content.createDiv({ cls: 'dashboard-sidebar-countdown-flip' });
-	const valueEl = flipWrap.createDiv({ cls: 'dashboard-sidebar-countdown-value', text: String(currentVal) });
-	flipWrap.createDiv({ cls: 'dashboard-sidebar-countdown-unit', text: displayMode === 'minutes' ? t('countdown.minutes') : displayMode === 'hours' ? t('countdown.hours') : t('countdown.days') });
-
-	// Auto-refresh with flip animation
-	let prevVal = currentVal;
-	const timer = setInterval(() => {
-		const now2 = new Date();
-		if (now2 >= target) {
-			clearInterval(timer);
-			content.empty();
-			content.createDiv({ cls: 'dashboard-sidebar-countdown-expired', text: t('countdown.expired') });
+		const items = getCountdownItems(settings).filter(item => item.targetDate).slice(0, 3);
+		if (items.length === 0) {
+			content.createDiv({ cls: 'dashboard-sidebar-countdown-placeholder', text: t('countdown.setTarget') });
 			return;
 		}
-		const diff = target.getTime() - now2.getTime();
-		const newVal = displayMode === 'minutes' ? Math.ceil(diff / (1000 * 60)) : displayMode === 'hours' ? Math.ceil(diff / (1000 * 60 * 60)) : Math.ceil(diff / (1000 * 60 * 60 * 24));
-		if (newVal !== prevVal) {
-			prevVal = newVal;
-			valueEl.textContent = String(newVal);
-			valueEl.addClass('dashboard-sidebar-countdown-value--flip');
-			setTimeout(() => valueEl.removeClass('dashboard-sidebar-countdown-value--flip'), 400);
+
+		for (const item of items) {
+			const row = content.createDiv({ cls: 'dashboard-sidebar-countdown-item' });
+			const target = new Date(item.targetDate + 'T00:00:00');
+			const now = new Date();
+			if (item.label) {
+				row.createDiv({ cls: 'dashboard-sidebar-countdown-until', text: t('countdown.untilLabel', { label: item.label }) });
+			}
+			if (now >= target) {
+				row.createDiv({ cls: 'dashboard-sidebar-countdown-expired', text: t('countdown.expired') });
+				continue;
+			}
+			const currentVal = getCountdownValue(target);
+			const flipWrap = row.createDiv({ cls: 'dashboard-sidebar-countdown-flip' });
+			flipWrap.createDiv({ cls: 'dashboard-sidebar-countdown-value', text: String(currentVal) });
+			flipWrap.createDiv({ cls: 'dashboard-sidebar-countdown-unit', text: t('countdown.days') });
 		}
+	};
+
+	const timer = setInterval(() => {
+		renderContent();
 	}, 60000);
+	renderContent();
+}
+
+function getCountdownValue(target: Date): number {
+	const diff = target.getTime() - Date.now();
+	return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 function showPomodoroStats(doc: Document, service: PomodoroService): void {
@@ -1363,7 +1230,7 @@ function openBookSearch(
 	onSelect: (book: import('./reading-service').BookInfo | null) => void,
 ): void {
 	const overlay = doc.body.createDiv({ cls: 'dashboard-reading-book-overlay' });
-	const modal = overlay.createDiv({ cls: 'dashboard-reading-book-modal' });
+	const modal = overlay.createDiv({ cls: 'dashboard-reading-end-modal' });
 
 	function close() {
 		doc.removeEventListener('keydown', onKey);
@@ -1374,104 +1241,63 @@ function openBookSearch(
 
 	overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
 
-	const header = modal.createDiv({ cls: 'dashboard-reading-book-header' });
-	header.createDiv({ cls: 'dashboard-reading-book-header-title', text: t('reading.selectBook') });
-	const closeBtn = header.createDiv({ cls: 'dashboard-reading-book-close' });
+	const header = modal.createDiv({ cls: 'dashboard-reading-end-header' });
+	header.createDiv({ cls: 'dashboard-reading-end-title', text: t('reading.selectBook') });
+	const closeBtn = header.createDiv({ cls: 'dashboard-reading-end-close' });
 	setIcon(closeBtn, 'x');
 	closeBtn.addEventListener('click', close);
 
-	const inputArea = modal.createDiv({ cls: 'dashboard-reading-book-input-area' });
-	const input = inputArea.createEl('input', {
-		cls: 'dashboard-reading-book-input',
-		attr: { type: 'text', placeholder: t('reading.searchBook') },
-	});
-	input.focus();
+	const body = modal.createDiv({ cls: 'dashboard-reading-end-body' });
 
-	const resultsArea = modal.createDiv({ cls: 'dashboard-reading-book-results' });
-
-	// Manual input row (always at bottom)
-	const manualRow = resultsArea.createDiv({ cls: 'dashboard-reading-book-manual' });
-	manualRow.createDiv({ cls: 'dashboard-reading-book-manual-label', text: t('reading.manualInput') });
-	const manualInput = manualRow.createEl('input', {
-		cls: 'dashboard-reading-book-manual-input',
+	body.createDiv({ cls: 'dashboard-reading-end-label', text: t('reading.editBookName') });
+	const titleInput = body.createEl('input', {
+		cls: 'dashboard-reading-end-input',
 		attr: { type: 'text', placeholder: t('reading.manualPlaceholder') },
 	});
-	const manualBtn = manualRow.createEl('button', {
-		cls: 'dashboard-reading-book-manual-btn',
-		text: 'OK',
-	});
-	manualBtn.addEventListener('click', () => {
-		const val = manualInput.value.trim();
-		if (val) {
-			onSelect({ title: val, author: '', coverUrl: '', isbn: '', source: 'manual', currentPage: 0, totalPages: 0, finished: false });
-			close();
-		}
+
+	body.createDiv({ cls: 'dashboard-reading-end-label', text: t('reading.editAuthorName') });
+	const authorInput = body.createEl('input', {
+		cls: 'dashboard-reading-end-input',
+		attr: { type: 'text' },
 	});
 
-	let searchTimer: ReturnType<typeof setTimeout> | null = null;
-	let searching = false;
-
-	input.addEventListener('input', () => {
-		if (searchTimer) clearTimeout(searchTimer);
-		const query = input.value.trim();
-
-		// Remove previous search results (keep manual row)
-		while (resultsArea.firstChild && resultsArea.firstChild !== manualRow) {
-			resultsArea.removeChild(resultsArea.firstChild!);
-		}
-
-		if (!query) return;
-
-		const indicator = resultsArea.createDiv({ cls: 'dashboard-reading-book-searching', text: t('reading.searching') });
-		resultsArea.insertBefore(indicator, manualRow);
-
-		searchTimer = setTimeout(async () => {
-			if (searching) return;
-			searching = true;
-
-			let results: import('./book-service').BookSearchResult[] = [];
-			try {
-				results = await searchBooks(query);
-			} catch {
-				results = [];
-			}
-			searching = false;
-
-			// Remove previous results
-			while (resultsArea.firstChild && resultsArea.firstChild !== manualRow) {
-				resultsArea.removeChild(resultsArea.firstChild!);
-			}
-
-			if (results.length === 0) {
-				const noResult = resultsArea.createDiv({ cls: 'dashboard-reading-book-no-results', text: t('reading.noResults') });
-				resultsArea.insertBefore(noResult, manualRow);
-				return;
-			}
-
-			for (const book of results) {
-				const item = resultsArea.createDiv({ cls: 'dashboard-reading-book-item' });
-				if (book.coverUrl) {
-					const c = item.createDiv({ cls: 'dashboard-reading-book-item-cover' });
-					downloadCoverAsBlobUrl(book.coverUrl).then(url => { if (url) c.style.backgroundImage = `url(${url})`; });
-				} else {
-					item.createDiv({ cls: 'dashboard-reading-book-item-nocover' });
-				}
-				const info = item.createDiv({ cls: 'dashboard-reading-book-item-info' });
-				info.createDiv({ cls: 'dashboard-reading-book-item-title', text: book.title });
-				if (book.author) {
-					info.createDiv({ cls: 'dashboard-reading-book-item-author', text: book.author });
-				}
-				item.addEventListener('click', () => {
-					onSelect({
-						title: book.title, author: book.author, coverUrl: book.coverUrl,
-						isbn: book.isbn, source: 'google', currentPage: 0, totalPages: 0, finished: false,
-					});
-					close();
-				});
-				resultsArea.insertBefore(item, manualRow);
-			}
-		}, 500);
+	body.createDiv({ cls: 'dashboard-reading-end-label', text: t('reading.editTotalPages') });
+	const pagesInput = body.createEl('input', {
+		cls: 'dashboard-reading-end-input',
+		attr: { type: 'number', min: '0' },
 	});
+
+	body.createDiv({ cls: 'dashboard-reading-end-label', text: t('reading.editCoverUrl') });
+	const coverInput = body.createEl('input', {
+		cls: 'dashboard-reading-end-input',
+		attr: { type: 'text', placeholder: t('reading.editCoverPlaceholder') },
+	});
+
+	const footer = modal.createDiv({ cls: 'dashboard-reading-end-footer' });
+	footer.createEl('button', {
+		cls: 'dashboard-reading-end-btn dashboard-reading-end-btn--cancel',
+		text: t('reading.endCancel'),
+	}).addEventListener('click', close);
+	footer.createEl('button', {
+		cls: 'dashboard-reading-end-btn dashboard-reading-end-btn--confirm',
+		text: t('reading.editConfirm'),
+	}).addEventListener('click', () => {
+		const title = titleInput.value.trim();
+		if (!title) return;
+		onSelect({
+			title,
+			author: authorInput.value.trim(),
+			coverUrl: coverInput.value.trim(),
+			isbn: '',
+			source: 'manual',
+			currentPage: 0,
+			totalPages: parseInt(pagesInput.value, 10) || 0,
+			finished: false,
+		});
+		close();
+	});
+
+	titleInput.focus();
 }
 
 function showReadingStats(doc: Document, service: ReadingService): void {
@@ -1639,6 +1465,7 @@ export function renderDashboard(
 			{ value: 'memo', label: t('renderer.typeMemo') },
 			{ value: 'notes', label: t('renderer.typeNotesPlain') },
 			{ value: 'library', label: t('renderer.typeLibrary') },
+			{ value: 'heatmap', label: t('renderer.typeHeatmap') },
 		];
 
 		for (const opt of typeOptions) {
@@ -1710,6 +1537,7 @@ export function renderDashboard(
 }
 
 const COLLAPSED_KEY = 'apex-dashboard-collapsed';
+const SHOW_ARCHIVED_KEY = 'apex-dashboard-show-archived';
 
 function getCollapsedSections(): Set<string> {
 	try {
@@ -1723,6 +1551,138 @@ function getCollapsedSections(): Set<string> {
 
 function saveCollapsedSections(collapsed: Set<string>): void {
 	localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...collapsed]));
+}
+
+function getShowArchivedSections(): Set<string> {
+	try {
+		const raw = localStorage.getItem(SHOW_ARCHIVED_KEY);
+		if (!raw) return new Set();
+		return new Set(JSON.parse(raw) as string[]);
+	} catch {
+		return new Set();
+	}
+}
+
+function saveShowArchivedSections(sections: Set<string>): void {
+	localStorage.setItem(SHOW_ARCHIVED_KEY, JSON.stringify([...sections]));
+}
+
+function renderHeatmapItem(container: HTMLElement, item: import('./types').HeatmapItem, columnName: string, callbacks: RenderCallbacks, app: App): void {
+	const el = container.createDiv({ cls: 'dashboard-heatmap-item' });
+	el.dataset.heatmapId = item.id;
+
+	// Label row
+	const headerRow = el.createDiv({ cls: 'dashboard-heatmap-item-header' });
+	const titleArea = headerRow.createDiv({ cls: 'dashboard-heatmap-item-title' });
+	const label = titleArea.createSpan({ cls: 'dashboard-heatmap-item-label', text: item.label });
+	const keyHint = titleArea.createSpan({ cls: 'dashboard-heatmap-item-key', text: `(${item.key})` });
+
+	const actions = headerRow.createDiv({ cls: 'dashboard-heatmap-item-actions' });
+
+	const editBtn = actions.createEl('button', {
+		cls: 'dashboard-heatmap-item-btn',
+		attr: { 'aria-label': t('heatmap.editItem') },
+	});
+	setIcon(editBtn, 'settings');
+	editBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const event = new CustomEvent('dashboard-heatmap-edit', { detail: { columnName, itemId: item.id }, bubbles: true });
+		el.dispatchEvent(event);
+	});
+
+	const deleteBtn = actions.createEl('button', {
+		cls: 'dashboard-heatmap-item-btn dashboard-heatmap-item-btn--danger',
+		attr: { 'aria-label': t('heatmap.deleteItem') },
+	});
+	setIcon(deleteBtn, 'trash-2');
+	deleteBtn.addEventListener('click', (e) => {
+		e.stopPropagation();
+		const event = new CustomEvent('dashboard-heatmap-delete', { detail: { columnName, itemId: item.id }, bubbles: true });
+		el.dispatchEvent(event);
+	});
+
+	// Heatmap grid
+	const heatmapEl = el.createDiv({ cls: 'dashboard-heatmap-item-grid' });
+	const data = readTrackerData(app, '', item.key, item.days);
+	const validPoints = data.filter(p => p.value !== null);
+
+	if (validPoints.length === 0) {
+		heatmapEl.createDiv({ cls: 'dashboard-heatmap-item-no-data', text: t('heatmap.noData', { key: item.key }) });
+		return;
+	}
+
+	const values = data.map(p => p.value);
+	const minVal = Math.min(...values.filter((v): v is number => v !== null));
+	const maxVal = Math.max(...values.filter((v): v is number => v !== null));
+	const accentColor = getCSSVar('--db-accent') || '#6366f1';
+	const range = maxVal - minVal || 1;
+
+	const firstDate = data[0] ? new Date(data[0].date + 'T00:00:00') : new Date();
+	const startDayOfWeek = firstDate.getDay();
+	const mondayOffset = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+
+	const weeks: (import('./types').TrackerDataPoint | null)[][] = [];
+	let currentWeek: (import('./types').TrackerDataPoint | null)[] = [];
+	for (let i = 0; i < mondayOffset; i++) {
+		currentWeek.push(null);
+	}
+	for (const point of data) {
+		currentWeek.push(point);
+		if (currentWeek.length === 7) {
+			weeks.push(currentWeek);
+			currentWeek = [];
+		}
+	}
+	if (currentWeek.length > 0) {
+		weeks.push(currentWeek);
+	}
+
+	const visibleWeeks = weeks.slice(-20);
+	const grid = heatmapEl.createDiv({ cls: 'dashboard-heatmap-item-grid-inner' });
+	grid.style.display = 'grid';
+	grid.style.gridTemplateColumns = `repeat(${visibleWeeks.length}, 10px)`;
+	grid.style.gridTemplateRows = 'repeat(7, 10px)';
+	grid.style.gap = '2px';
+
+	for (const week of visibleWeeks) {
+		for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
+			const point = week[dayIdx] ?? null;
+			const cell = grid.createDiv({ cls: 'dashboard-heatmap-item-cell' });
+			cell.style.width = '10px';
+			cell.style.height = '10px';
+			cell.style.borderRadius = '2px';
+			if (point === null || point.value === null) {
+				cell.addClass('dashboard-heatmap-item-cell--empty');
+			} else {
+				const intensity = (point.value - minVal) / range;
+				cell.style.backgroundColor = item.color || accentColor;
+				cell.style.opacity = String(0.15 + intensity * 0.85);
+				cell.title = `${point.date}: ${point.value}`;
+			}
+		}
+	}
+
+	// Stats row
+	const statsRow = el.createDiv({ cls: 'dashboard-heatmap-item-stats' });
+	const latest = validPoints[validPoints.length - 1]!.value as number;
+	let streak = 0;
+	for (let i = validPoints.length - 1; i >= 0; i--) {
+		if (validPoints[i]!.value !== null) streak++;
+		else break;
+	}
+	const completionRate = Math.round((validPoints.length / data.length) * 100);
+
+	const currentEl = statsRow.createSpan({ cls: 'dashboard-heatmap-item-stat' });
+	currentEl.createSpan({ cls: 'dashboard-heatmap-item-stat-icon', text: '📊' });
+	currentEl.createSpan({ text: `${t('heatmap.current')}: ${latest}` });
+
+	const streakEl = statsRow.createSpan({ cls: 'dashboard-heatmap-item-stat' });
+	streakEl.createSpan({ cls: 'dashboard-heatmap-item-stat-icon', text: '⚡' });
+	streakEl.createSpan({ text: t('heatmap.streak', { count: streak }) });
+
+	const rateEl = statsRow.createSpan({ cls: 'dashboard-heatmap-item-stat' });
+	rateEl.createSpan({ cls: 'dashboard-heatmap-item-stat-icon', text: '✅' });
+	rateEl.createSpan({ text: t('heatmap.rate', { rate: completionRate }) });
 }
 
 function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app: App, data?: DashboardData, settings?: DashboardSettings): HTMLElement {
@@ -1804,9 +1764,57 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 		});
 		setIcon(templateBtn, 'layout-template');
 		templateBtn.addEventListener('click', () => callbacks.onAddFromTemplate(column.name));
+
+		const archivedCount = column.cards.filter(card => card.archived).length;
+		if (archivedCount > 0) {
+			const showArchived = getShowArchivedSections();
+			const isShowingArchived = showArchived.has(column.name);
+			const archiveToggleBtn = headerActions.createEl('button', {
+				cls: `dashboard-section-add-btn dashboard-section-archive-toggle${isShowingArchived ? ' dashboard-section-archive-toggle--active' : ''}`,
+				attr: { 'aria-label': isShowingArchived ? t('renderer.hideArchived') : t('renderer.showArchived') },
+			});
+			setIcon(archiveToggleBtn, isShowingArchived ? 'archive-x' : 'archive');
+			archiveToggleBtn.createSpan({ cls: 'dashboard-section-archive-count', text: String(archivedCount) });
+			archiveToggleBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				if (!data) return;
+				if (isShowingArchived) {
+					showArchived.delete(column.name);
+				} else {
+					showArchived.add(column.name);
+				}
+				saveShowArchivedSections(showArchived);
+				renderDashboard(el.parentElement as HTMLElement, data, callbacks, app, settings);
+			});
+		}
 	}
 
 	// Library section: render differently
+	// Heatmap section: render heatmap items instead of cards
+	if (sectionType === 'heatmap') {
+		const addHeatmapBtn = headerActions.createEl('button', {
+			cls: 'dashboard-section-add-btn',
+			attr: { 'aria-label': t('heatmap.addItem') },
+		});
+		setIcon(addHeatmapBtn, 'plus');
+		addHeatmapBtn.addEventListener('click', () => {
+			const event = new CustomEvent('dashboard-heatmap-add', { detail: { columnName: column.name }, bubbles: true });
+			el.dispatchEvent(event);
+		});
+
+		const heatmapContainer = el.createDiv({ cls: 'dashboard-heatmap-section' });
+		const items = column.heatmapItems ?? [];
+		if (items.length === 0) {
+			const emptyEl = heatmapContainer.createDiv({ cls: 'dashboard-heatmap-empty' });
+			emptyEl.createSpan({ text: t('heatmap.addItem') });
+		} else {
+			for (const item of items) {
+				renderHeatmapItem(heatmapContainer, item, column.name, callbacks, app);
+			}
+		}
+		return el;
+	}
+
 	if (sectionType === 'library') {
 		const configBtn = headerActions.createEl('button', {
 			cls: 'dashboard-section-add-btn',
@@ -1833,7 +1841,7 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 
 	const cardsContainer = el.createDiv({ cls: 'dashboard-section-cards' });
 
-	for (const card of column.cards) {
+	for (const card of column.cards.filter(card => !card.archived)) {
 		try {
 			const cardEl = renderCard(card, column.name, sectionType, callbacks, app, data, settings);
 			cardsContainer.appendChild(cardEl);
@@ -1842,7 +1850,57 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 		}
 	}
 
+	const showArchived = sectionType === 'todo' && getShowArchivedSections().has(column.name);
+	if (showArchived) {
+		renderArchivedTodoList(el, column, callbacks);
+	}
+
 	return el;
+}
+
+function renderArchivedTodoList(container: HTMLElement, column: DashboardColumn, callbacks: RenderCallbacks): void {
+	const archivedCards = column.cards
+		.filter(card => card.archived)
+		.sort((a, b) => (b.archivedAt || '').localeCompare(a.archivedAt || ''));
+	if (archivedCards.length === 0) return;
+
+	const archivePanel = container.createDiv({ cls: 'dashboard-archive-panel' });
+	const header = archivePanel.createDiv({ cls: 'dashboard-archive-panel-header' });
+	header.createDiv({ cls: 'dashboard-archive-panel-title', text: t('renderer.archivedCards') });
+	header.createDiv({ cls: 'dashboard-archive-panel-count', text: String(archivedCards.length) });
+
+	const list = archivePanel.createDiv({ cls: 'dashboard-archive-list' });
+	for (const card of archivedCards) {
+		const row = list.createDiv({ cls: 'dashboard-archive-row' });
+		const main = row.createDiv({ cls: 'dashboard-archive-row-main' });
+		main.createDiv({ cls: 'dashboard-archive-row-title', text: card.title });
+		const meta = main.createDiv({ cls: 'dashboard-archive-row-meta' });
+		meta.createSpan({ text: card.archivedAt ? `${t('renderer.archivedAt')} ${card.archivedAt}` : t('renderer.archivedAtUnknown') });
+		if (card.tasks.length > 0) {
+			meta.createSpan({ text: `${card.tasks.filter(task => task.checked).length}/${card.tasks.length}` });
+		}
+
+		const actions = row.createDiv({ cls: 'dashboard-archive-row-actions' });
+		const restoreBtn = actions.createEl('button', {
+			cls: 'dashboard-card-btn dashboard-card-btn--restore',
+			attr: { 'aria-label': t('renderer.restoreCard') },
+		});
+		setIcon(restoreBtn, 'undo-2');
+		restoreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			callbacks.onCardRestore(card.id);
+		});
+
+		const deleteBtn = actions.createEl('button', {
+			cls: 'dashboard-card-btn dashboard-card-btn--danger',
+			attr: { 'aria-label': t('renderer.deleteCard') },
+		});
+		setIcon(deleteBtn, 'trash-2');
+		deleteBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			callbacks.onCardDelete(card.id);
+		});
+	}
 }
 
 function renderCard(card: DashboardCard, columnName: string, sectionType: string, callbacks: RenderCallbacks, app: App, data?: DashboardData, settings?: DashboardSettings): HTMLElement {
@@ -1850,6 +1908,7 @@ function renderCard(card: DashboardCard, columnName: string, sectionType: string
 	el.addClass('dashboard-card', `dashboard-card--${card.type}`);
 	el.dataset.cardId = card.id;
 	el.dataset.cardType = card.type;
+	if (card.archived) el.dataset.archived = 'true';
 	el.setAttribute('role', 'article');
 	el.setAttribute('aria-label', card.title);
 
@@ -2010,6 +2069,30 @@ function renderCard(card: DashboardCard, columnName: string, sectionType: string
 		editBtn.addEventListener('click', (e) => {
 			e.stopPropagation();
 			callbacks.onCardEdit(card);
+		});
+	}
+
+	if (isTask && !card.archived) {
+		const archiveBtn = actions.createEl('button', {
+			cls: 'dashboard-card-btn',
+			attr: { 'aria-label': t('renderer.archiveCard') },
+		});
+		setIcon(archiveBtn, 'archive');
+		archiveBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			callbacks.onCardArchive(card.id);
+		});
+	}
+
+	if (isTask && card.archived) {
+		const restoreBtn = actions.createEl('button', {
+			cls: 'dashboard-card-btn dashboard-card-btn--restore',
+			attr: { 'aria-label': t('renderer.restoreCard') },
+		});
+		setIcon(restoreBtn, 'undo-2');
+		restoreBtn.addEventListener('click', (e) => {
+			e.stopPropagation();
+			callbacks.onCardRestore(card.id);
 		});
 	}
 
@@ -2634,6 +2717,7 @@ function getSectionType(column: DashboardColumn): string {
 	if (lower === 'notes') return 'notes';
 	if (lower === 'dashboard') return 'dashboard';
 	if (lower === 'library') return 'library';
+	if (lower === 'heatmap') return 'heatmap';
 	if (column.cards.length > 0) {
 		const types = new Set(column.cards.map(c => c.type));
 		const dashboardTypes = new Set(['chart', 'weather', 'tracker']);

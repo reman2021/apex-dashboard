@@ -3,6 +3,7 @@ import type DashboardPlugin from './main';
 import type { TaskTemplate } from './types';
 import { t } from './i18n';
 import { showConfirmDialog } from './confirm-dialog';
+import { inheritDashboardThemeVars } from './theme-utils';
 
 type TemplateSelectCallback = (template: TaskTemplate) => void;
 
@@ -31,6 +32,7 @@ export class TemplatePickerModal extends Modal {
 		contentEl.addClass('dashboard-modal');
 		containerEl.addClass('modal--dashboard');
 		containerEl.parentElement?.addClass('modal-bg--dashboard');
+		inheritDashboardThemeVars(contentEl);
 		this.render();
 	}
 

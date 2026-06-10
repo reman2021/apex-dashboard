@@ -14,7 +14,7 @@ import type {
 import { parse as parseYaml } from 'yaml';
 import { t } from './i18n';
 
-const KNOWN_METADATA_KEYS = new Set(['id', 'link', 'progress', 'due', 'streak', 'type', 'color', 'cover', 'width', 'size', 'lat', 'lon', 'city', 'track', 'days', 'cols', 'rows', 'gcol', 'grow']);
+const KNOWN_METADATA_KEYS = new Set(['id', 'link', 'progress', 'due', 'streak', 'type', 'color', 'cover', 'archived', 'archivedAt', 'width', 'size', 'lat', 'lon', 'city', 'track', 'days', 'cols', 'rows', 'gcol', 'grow']);
 
 const REMINDER_REGEX = /\s*⏰\s*(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})\s*$/;
 
@@ -121,6 +121,17 @@ export function serialize(data: DashboardData): string {
 			if (lc.pageSize) {
 				lines.push(`      pageSize: ${lc.pageSize}`);
 			}
+
+		if (col.heatmapItems && col.heatmapItems.length > 0 && col.sectionType === 'heatmap') {
+			lines.push('    heatmapItems:');
+			for (const item of col.heatmapItems) {
+				lines.push(`      - id: "${escapeYamlString(item.id)}"`);
+				lines.push(`        key: "${escapeYamlString(item.key)}"`);
+				lines.push(`        label: "${escapeYamlString(item.label)}"`);
+				lines.push(`        days: ${item.days}`);
+				if (item.color) lines.push(`        color: "${escapeYamlString(item.color)}"`);
+			}
+		}
 				if (lc.quickDateFilter) {
 					lines.push(`      quickDateFilter:`);
 					lines.push(`        property: "${lc.quickDateFilter.property}"`);
@@ -193,6 +204,13 @@ export function serialize(data: DashboardData): string {
 
 			if (card.coverImage) {
 				lines.push(`cover: ${card.coverImage}`);
+			}
+
+			if (card.archived) {
+				lines.push('archived: true');
+				if (card.archivedAt) {
+					lines.push(`archivedAt: ${card.archivedAt}`);
+				}
 			}
 
 			if (card.width > 0) {
@@ -281,6 +299,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -303,6 +323,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -325,6 +347,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -358,6 +382,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -385,6 +411,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -414,6 +442,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -443,6 +473,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -465,6 +497,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -487,6 +521,8 @@ export function generateDefaultMarkdown(): string {
 						blockquote: '',
 						color: '',
 						coverImage: '',
+						archived: false,
+						archivedAt: '',
 						width: 0,
 					size: 'M' as CardSize,
 					gridCols: 0,
@@ -588,7 +624,7 @@ function parseHiddenPresets(fm: Record<string, unknown>): string[] | undefined {
 	return undefined;
 }
 
-function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig }> {
+function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[] }> {
 	const raw = fm.columns;
 	if (!Array.isArray(raw)) return DEFAULT_COLUMNS;
 
@@ -597,10 +633,21 @@ function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; col
 			color: String(item.color ?? '#6366f1'),
 			sectionType: item.type ? String(item.type) : undefined,
 		libraryConfig: item.library ? parseLibraryConfig(item.library as Record<string, unknown>) : undefined,
+		heatmapItems: item.heatmapItems ? parseHeatmapItems(item.heatmapItems as Array<Record<string, unknown>>) : undefined,
 	}));
 }
 
-function parseColumns(body: string, defs: Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig }>): DashboardColumn[] {
+function parseHeatmapItems(raw: Array<Record<string, unknown>>): import('./types').HeatmapItem[] {
+	return raw.map(item => ({
+		id: String(item.id ?? ''),
+		key: String(item.key ?? ''),
+		label: String(item.label ?? item.key ?? ''),
+		days: typeof item.days === 'number' ? item.days : 30,
+		color: item.color ? String(item.color) : undefined,
+	})).filter(item => item.id && item.key);
+}
+
+function parseColumns(body: string, defs: Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[] }>): DashboardColumn[] {
 	const sections = splitByH2(body);
 	const defMap = new Map(defs.map(d => [d.name, d]));
 	const usedDefIndices = new Set<number>();
@@ -621,6 +668,7 @@ function parseColumns(body: string, defs: Array<{ name: string; color: string; s
 			sectionType: resolveSectionType(section.heading, cards, def?.sectionType),
 			cards,
 			libraryConfig: def?.libraryConfig,
+			heatmapItems: def?.heatmapItems,
 		};
 	});
 }
@@ -755,6 +803,8 @@ function parseCard(block: { title: string; body: string }, columnName: string): 
 		blockquote,
 		color: metadata.color ?? '',
 		coverImage: metadata.cover ?? '',
+		archived: isTruthy(metadata.archived),
+		archivedAt: metadata.archivedAt ?? '',
 		width: parseInt(metadata.width ?? '0', 10) || 0,
 			size: parseCardSize(metadata.size),
 		gridCols: parseInt(metadata.cols ?? '0', 10) || 0,
@@ -865,6 +915,11 @@ function extractStreak(metadata: Record<string, string>): number {
 
 function extractDue(metadata: Record<string, string>): string {
 	return metadata.due ?? '';
+}
+
+function isTruthy(raw: string | undefined): boolean {
+	if (!raw) return false;
+	return ['true', 'yes', '1', 'y'].includes(raw.trim().toLowerCase());
 }
 
 function generateId(title: string, column: string): string {

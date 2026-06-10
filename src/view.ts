@@ -15,11 +15,14 @@ import { WidgetTypeModal, type WidgetType } from './widget-type-modal';
 import { WeatherConfigModal } from './weather-config-modal';
 import { LibraryConfigModal } from './library-config-modal';
 import { TrackerConfigModal } from './tracker-config-modal';
+import { HeatmapConfigModal } from './heatmap-config-modal';
+import type { HeatmapItem } from './types';
 import { TemplatePickerModal } from './template-modal';
 import { PomodoroService } from './pomodoro-service';
 import { ReadingService } from './reading-service';
 import { ReminderNoticeModal } from './reminder-notice';
 import { t } from './i18n';
+import { getObsidianThemeMode, normalizeStylePreset } from './theme-options';
 
 export const DASHBOARD_VIEW_TYPE = 'apex-dashboard-view';
 
@@ -28,6 +31,7 @@ export class DashboardView extends ItemView {
 	private sync: SyncEngine;
 	private data: DashboardData | null = null;
 	private cleanupFns: Array<() => void> = [];
+	private bannerCleanupFns: Array<() => void> = [];
 	private vaultEventRefs: Array<{ evt: Events; ref: unknown }> = [];
 	private recentDocsTimer: ReturnType<typeof setTimeout> | null = null;
 	private libraryRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -52,6 +56,7 @@ export class DashboardView extends ItemView {
 	private mobileWidgetTabsOpen: boolean = false;
 	private static readonly WEATHER_REFRESH_MS = 30 * 60 * 1000; // 30 minutes
 	private weatherRefreshTimer: ReturnType<typeof setInterval> | null = null;
+	private preserveBannerOnNextRender = false;
 
 	constructor(leaf: WorkspaceLeaf, plugin: DashboardPlugin) {
 		super(leaf);
@@ -118,12 +123,18 @@ export class DashboardView extends ItemView {
 	}
 
 	private render(data: DashboardData): void {
-		this.runCleanup();
+		const shouldPreserveBanner = this.preserveBannerOnNextRender;
+		this.preserveBannerOnNextRender = false;
+		const previousContainer = this.containerEl.children[1] as HTMLElement;
+		const preservedBanner = shouldPreserveBanner
+			? previousContainer?.querySelector('.dashboard-banner') as HTMLElement | null
+			: null;
+		this.runCleanup(Boolean(preservedBanner));
 		this.data = data;
 		this.firedReminders.clear();
 
 		// Save scroll positions before re-render
-		const root = this.containerEl.children[1] as HTMLElement;
+		const root = previousContainer;
 		const kanbanEl = root?.querySelector('.dashboard-kanban');
 		const sidebarScrollEl = root?.querySelector('.dashboard-sidebar-scroll');
 		const savedKanbanScroll = kanbanEl ? kanbanEl.scrollTop : 0;
@@ -143,29 +154,33 @@ export class DashboardView extends ItemView {
 			if (cardId) savedTaskListScrolls.set(cardId, (el as HTMLElement).scrollTop);
 		});
 
-		const container = this.containerEl.children[1] as HTMLElement;
+		const container = previousContainer;
 		container.empty();
 		container.addClass('apex-dashboard-root');
-		container.setAttribute('data-theme', this.plugin.settings.stylePreset);
+		container.setAttribute('data-theme', normalizeStylePreset(this.plugin.settings.stylePreset, getObsidianThemeMode()));
 
-		const bannerEl = renderBanner(
-			container,
-			data.banner,
-			() => this.openBannerEditModal(data),
-			this.app,
-		);
+		if (preservedBanner) {
+			container.appendChild(preservedBanner);
+		} else {
+			const bannerEl = renderBanner(
+				container,
+				data.banner,
+				() => this.openBannerEditModal(data),
+				this.app,
+			);
 
-		this.renderMobileActions(bannerEl);
+			this.renderMobileActions(bannerEl);
 
-		if (this.bannerCollapsed && window.innerWidth > 640) {
-			bannerEl.addClass('dashboard-banner--collapsed');
-		}
-		this.setupBannerBehavior(bannerEl);
-		void this.applyQuoteLibrary(data.banner, bannerEl);
+			if (this.bannerCollapsed && window.innerWidth > 640) {
+				bannerEl.addClass('dashboard-banner--collapsed');
+			}
+			this.setupBannerBehavior(bannerEl);
+			void this.applyQuoteLibrary(data.banner, bannerEl);
 
-		// Banner quote rotation
-		if (!data.banner.quoteLibraryPath?.trim()) {
-			this.setupBannerRotation(container, data.banner);
+			// Banner quote rotation
+			if (!data.banner.quoteLibraryPath?.trim()) {
+				this.setupBannerRotation(container, data.banner);
+			}
 		}
 
 		this.renderMobileWidgetBar(container);
@@ -188,6 +203,30 @@ export class DashboardView extends ItemView {
 		// Library config event delegation
 		kanban.addEventListener('dashboard-library-config', ((e: CustomEvent) => {
 			const { columnName } = e.detail as { columnName: string };
+		// Heatmap event delegation
+		kanban.addEventListener('dashboard-heatmap-add', ((e: CustomEvent) => {
+			const { columnName } = e.detail as { columnName: string };
+			this.openHeatmapConfigModal(columnName);
+		}) as EventListener);
+
+		kanban.addEventListener('dashboard-heatmap-edit', ((e: CustomEvent) => {
+			const { columnName, itemId } = e.detail as { columnName: string; itemId: string };
+			const col = this.data?.columns.find(c => c.name === columnName);
+			const item = col?.heatmapItems?.find(i => i.id === itemId);
+			if (item) this.openHeatmapConfigModal(columnName, item);
+		}) as EventListener);
+
+		kanban.addEventListener('dashboard-heatmap-delete', ((e: CustomEvent) => {
+			const { columnName, itemId } = e.detail as { columnName: string; itemId: string };
+			import('./confirm-dialog').then(({ showConfirmDialog }) =>
+				showConfirmDialog(this.app, {
+					title: t('common.confirmDelete'),
+					message: t('common.confirmDeleteMessage'),
+				}).then(confirmed => {
+					if (confirmed) this.sync.deleteHeatmapItem(columnName, itemId);
+				})
+			);
+		}) as EventListener);
 			this.openLibraryConfigModal(columnName);
 		}) as EventListener);
 
@@ -390,7 +429,7 @@ export class DashboardView extends ItemView {
 			}
 		};
 		window.addEventListener('resize', onResize);
-		this.cleanupFns.push(() => window.removeEventListener('resize', onResize));
+		this.bannerCleanupFns.push(() => window.removeEventListener('resize', onResize));
 	}
 
 	private setupBannerRotation(container: HTMLElement, banner: BannerData): void {
@@ -424,7 +463,7 @@ export class DashboardView extends ItemView {
 				};
 
 				const quoteTimer = setInterval(rotateQuote, DashboardView.BANNER_QUOTE_ROTATION_MS);
-				this.cleanupFns.push(() => clearInterval(quoteTimer));
+				this.bannerCleanupFns.push(() => clearInterval(quoteTimer));
 			}
 		}
 
@@ -457,7 +496,7 @@ export class DashboardView extends ItemView {
 				};
 
 				const imgTimer = setInterval(rotateImage, DashboardView.BANNER_IMAGE_ROTATION_MS);
-				this.cleanupFns.push(() => clearInterval(imgTimer));
+				this.bannerCleanupFns.push(() => clearInterval(imgTimer));
 			}
 		}
 	}
@@ -474,7 +513,8 @@ export class DashboardView extends ItemView {
 			const quoteEl = bannerEl.querySelector('.dashboard-banner-quote') as HTMLElement | null;
 			const authorEl = bannerEl.querySelector('.dashboard-banner-author') as HTMLElement | null;
 			if (!quoteEl || !authorEl) return;
-			const next = quotes[Math.floor(Math.random() * quotes.length)];
+			const index = Math.floor(Date.now() / DashboardView.BANNER_QUOTE_ROTATION_MS) % quotes.length;
+			const next = quotes[index];
 			if (next) {
 				quoteEl.textContent = next.quote;
 				authorEl.textContent = next.author;
@@ -656,19 +696,33 @@ export class DashboardView extends ItemView {
 				this.sync.deleteCard(cardId);
 				new Notice(t('card.deleted'));
 			},
-			onCheckboxToggle: (cardId: string, idx: number, checked: boolean) => this.sync.toggleTask(cardId, idx, checked),
-			onTaskAdd: (cardId: string, text: string) => this.sync.addTask(cardId, text),
+			onCardArchive: async (cardId: string) => {
+				const confirmed = await showConfirmDialog(this.app, {
+					title: t('renderer.archiveCard'),
+					message: t('renderer.archiveCardConfirm'),
+					confirmText: t('renderer.archiveCard'),
+				});
+				if (!confirmed) return;
+				this.sync.archiveCard(cardId);
+				new Notice(t('renderer.cardArchived'));
+			},
+			onCardRestore: (cardId: string) => {
+				this.sync.restoreCard(cardId);
+				new Notice(t('renderer.cardRestored'));
+			},
+			onCheckboxToggle: (cardId: string, idx: number, checked: boolean) => this.runTaskMutation(() => this.sync.toggleTask(cardId, idx, checked)),
+			onTaskAdd: (cardId: string, text: string) => this.runTaskMutation(() => this.sync.addTask(cardId, text)),
 			onTaskDelete: async (cardId: string, idx: number) => {
 				const confirmed = await showConfirmDialog(this.app, {
 					title: t('common.confirmDelete'),
 					message: t('common.confirmDeleteMessage'),
 				});
 				if (!confirmed) return;
-				this.sync.deleteTask(cardId, idx);
+				this.runTaskMutation(() => this.sync.deleteTask(cardId, idx));
 			},
-			onTaskReorder: (cardId: string, from: number, to: number) => this.sync.reorderTask(cardId, from, to),
-			onTaskMoveToCard: (srcCardId: string, taskIndex: number, destCardId: string, destIndex: number) => this.sync.moveTaskToCard(srcCardId, taskIndex, destCardId, destIndex),
-			onTaskEdit: (cardId: string, idx: number, text: string) => this.sync.editTask(cardId, idx, text),
+			onTaskReorder: (cardId: string, from: number, to: number) => this.runTaskMutation(() => this.sync.reorderTask(cardId, from, to)),
+			onTaskMoveToCard: (srcCardId: string, taskIndex: number, destCardId: string, destIndex: number) => this.runTaskMutation(() => this.sync.moveTaskToCard(srcCardId, taskIndex, destCardId, destIndex)),
+			onTaskEdit: (cardId: string, idx: number, text: string) => this.runTaskMutation(() => this.sync.editTask(cardId, idx, text)),
 			onMemoUpdate: (card: DashboardCard, updates: { body: string; blockquote: string }) => this.sync.updateMemoCard(card.id, updates),
 			onProjectDocsUpdate: (card: DashboardCard, docPaths: string[]) => this.sync.updateProjectDocs(card.id, docPaths),
 			onProjectDocsReorder: (cardId: string, from: number, to: number) => this.sync.reorderDocPaths(cardId, from, to),
@@ -733,7 +787,7 @@ export class DashboardView extends ItemView {
 		}
 		if (cardType === 'weather' || cardType === 'tracker') return;
 			if (cardType === 'task' || sectionType === 'todo') {
-			this.sync.addTask(cardId, `[[${filePath}]]`);
+			this.runTaskMutation(() => this.sync.addTask(cardId, `[[${filePath}]]`));
 		} else if (sectionType === 'memo') {
 			this.sync.addFileLinkToMemo(cardId, filePath);
 		} else {
@@ -746,6 +800,15 @@ export class DashboardView extends ItemView {
 			this.sync.updateBanner(updates);
 		}, this.plugin.settings.stylePreset);
 		modal.open();
+	}
+
+	private async runTaskMutation(action: () => Promise<void>): Promise<void> {
+		this.preserveBannerOnNextRender = true;
+		try {
+			await action();
+		} finally {
+			this.preserveBannerOnNextRender = false;
+		}
 	}
 
 	private openCardEditModal(card: DashboardCard): void {
@@ -802,6 +865,17 @@ export class DashboardView extends ItemView {
 			},
 			this.plugin.settings.stylePreset,
 		);
+		modal.open();
+	}
+
+		private openHeatmapConfigModal(columnName: string, existing?: import('./types').HeatmapItem): void {
+		const modal = new HeatmapConfigModal(this.app, (item) => {
+			if (existing) {
+				this.sync.updateHeatmapItem(columnName, existing.id, item);
+			} else {
+				this.sync.addHeatmapItem(columnName, item);
+			}
+		}, existing, this.plugin.settings.stylePreset);
 		modal.open();
 	}
 
@@ -972,7 +1046,7 @@ export class DashboardView extends ItemView {
 		renderRecentDocs(parent, docs, (path) => this.navigateToPath(path));
 	}
 
-	private runCleanup(): void {
+	private runCleanup(preserveBanner = false): void {
 		destroyAllCharts();
 		if (this.pomodoroService) {
 			this.pomodoroService.setOnTick(null);
@@ -983,6 +1057,10 @@ export class DashboardView extends ItemView {
 		}
 		for (const fn of this.cleanupFns) fn();
 		this.cleanupFns = [];
+		if (!preserveBanner) {
+			for (const fn of this.bannerCleanupFns) fn();
+			this.bannerCleanupFns = [];
+		}
 	}
 
 	private startReminderChecker(): void {
@@ -1049,21 +1127,6 @@ export class DashboardView extends ItemView {
 				}
 			}
 
-			// Countdown reminder
-			if (this.plugin.settings.countdownEnabled && this.plugin.settings.countdownTargetDate && this.plugin.settings.countdownReminderDays > 0) {
-				const ckKey = 'countdown-remind';
-				if (!this.firedReminders.has(ckKey)) {
-					const raw = this.plugin.settings.countdownTargetDate;
-				const target = raw.includes('T') ? new Date(raw) : new Date(raw + 'T00:00:00');
-					const diffMs = target.getTime() - now.getTime();
-					const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-					if (daysLeft >= 0 && daysLeft <= this.plugin.settings.countdownReminderDays) {
-						this.firedReminders.add(ckKey);
-						const label = this.plugin.settings.countdownLabel || this.plugin.settings.countdownTargetDate;
-						new Notice(t('countdown.reminderNotice', { label, days: String(daysLeft) }));
-					}
-				}
-			}
 		}
 	}
 
