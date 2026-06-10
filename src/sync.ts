@@ -609,6 +609,20 @@ export class SyncEngine {
 		await this.writeToDisk();
 	}
 
+	async toggleHeatmapLayout(columnName: string): Promise<void> {
+		if (!this.data) return;
+
+		this.data = {
+			...this.data,
+			columns: this.data.columns.map(col =>
+				col.name === columnName
+					? { ...col, heatmapLayout: col.heatmapLayout === 'row' ? 'column' : 'row' }
+					: col
+			),
+		};
+		await this.writeToDisk();
+	}
+
 
 	private getDefaultCardTitle(columnName: string, sectionType?: string): string {
 		const effective = sectionType?.toLowerCase();

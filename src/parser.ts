@@ -109,6 +109,19 @@ export function serialize(data: DashboardData): string {
 		if (col.sectionType) {
 			lines.push(`    type: ${col.sectionType}`);
 		}
+		if (col.sectionType === 'heatmap') {
+			lines.push(`    heatmapLayout: ${col.heatmapLayout ?? 'column'}`);
+			if (col.heatmapItems && col.heatmapItems.length > 0) {
+				lines.push('    heatmapItems:');
+				for (const item of col.heatmapItems) {
+					lines.push(`      - id: "${escapeYamlString(item.id)}"`);
+					lines.push(`        key: "${escapeYamlString(item.key)}"`);
+					lines.push(`        label: "${escapeYamlString(item.label)}"`);
+					lines.push(`        days: ${item.days}`);
+					if (item.color) lines.push(`        color: "${escapeYamlString(item.color)}"`);
+				}
+			}
+		}
 		if (col.libraryConfig) {
 			lines.push('    library:');
 			const lc = col.libraryConfig;
@@ -121,17 +134,6 @@ export function serialize(data: DashboardData): string {
 			if (lc.pageSize) {
 				lines.push(`      pageSize: ${lc.pageSize}`);
 			}
-
-		if (col.heatmapItems && col.heatmapItems.length > 0 && col.sectionType === 'heatmap') {
-			lines.push('    heatmapItems:');
-			for (const item of col.heatmapItems) {
-				lines.push(`      - id: "${escapeYamlString(item.id)}"`);
-				lines.push(`        key: "${escapeYamlString(item.key)}"`);
-				lines.push(`        label: "${escapeYamlString(item.label)}"`);
-				lines.push(`        days: ${item.days}`);
-				if (item.color) lines.push(`        color: "${escapeYamlString(item.color)}"`);
-			}
-		}
 				if (lc.quickDateFilter) {
 					lines.push(`      quickDateFilter:`);
 					lines.push(`        property: "${lc.quickDateFilter.property}"`);
@@ -624,7 +626,7 @@ function parseHiddenPresets(fm: Record<string, unknown>): string[] | undefined {
 	return undefined;
 }
 
-function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[] }> {
+function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[]; heatmapLayout?: 'column' | 'row' }> {
 	const raw = fm.columns;
 	if (!Array.isArray(raw)) return DEFAULT_COLUMNS;
 
@@ -634,6 +636,7 @@ function parseColumnDefs(fm: Record<string, unknown>): Array<{ name: string; col
 			sectionType: item.type ? String(item.type) : undefined,
 		libraryConfig: item.library ? parseLibraryConfig(item.library as Record<string, unknown>) : undefined,
 		heatmapItems: item.heatmapItems ? parseHeatmapItems(item.heatmapItems as Array<Record<string, unknown>>) : undefined,
+		heatmapLayout: item.heatmapLayout === 'row' ? 'row' : 'column',
 	}));
 }
 
@@ -647,7 +650,7 @@ function parseHeatmapItems(raw: Array<Record<string, unknown>>): import('./types
 	})).filter(item => item.id && item.key);
 }
 
-function parseColumns(body: string, defs: Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[] }>): DashboardColumn[] {
+function parseColumns(body: string, defs: Array<{ name: string; color: string; sectionType?: string; libraryConfig?: LibraryConfig; heatmapItems?: import('./types').HeatmapItem[]; heatmapLayout?: 'column' | 'row' }>): DashboardColumn[] {
 	const sections = splitByH2(body);
 	const defMap = new Map(defs.map(d => [d.name, d]));
 	const usedDefIndices = new Set<number>();
@@ -669,6 +672,7 @@ function parseColumns(body: string, defs: Array<{ name: string; color: string; s
 			cards,
 			libraryConfig: def?.libraryConfig,
 			heatmapItems: def?.heatmapItems,
+			heatmapLayout: def?.heatmapLayout,
 		};
 	});
 }

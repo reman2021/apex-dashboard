@@ -1659,7 +1659,7 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 
 	// Stats row
 	const statsRow = el.createDiv({ cls: 'dashboard-heatmap-item-stats' });
-	const latest = validPoints[validPoints.length - 1]!.value as number;
+	const avgValue = Number((validPoints.reduce((sum, point) => sum + (point.value ?? 0), 0) / validPoints.length).toFixed(2));
 	let streak = 0;
 	for (let i = validPoints.length - 1; i >= 0; i--) {
 		if (validPoints[i]!.value !== null) streak++;
@@ -1669,7 +1669,7 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 
 	const currentEl = statsRow.createSpan({ cls: 'dashboard-heatmap-item-stat' });
 	currentEl.createSpan({ cls: 'dashboard-heatmap-item-stat-icon', text: '📊' });
-	currentEl.createSpan({ text: `${t('heatmap.current')}: ${latest}` });
+	currentEl.createSpan({ text: `${t('heatmap.current')}: ${avgValue}` });
 
 	const streakEl = statsRow.createSpan({ cls: 'dashboard-heatmap-item-stat' });
 	streakEl.createSpan({ cls: 'dashboard-heatmap-item-stat-icon', text: '⚡' });
@@ -1787,6 +1787,16 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 	// Library section: render differently
 	// Heatmap section: render heatmap items instead of cards
 	if (sectionType === 'heatmap') {
+		const isRowLayout = column.heatmapLayout === 'row';
+		const layoutBtn = headerActions.createEl('button', {
+			cls: 'dashboard-section-add-btn',
+			attr: { 'aria-label': isRowLayout ? t('heatmap.layoutColumn') : t('heatmap.layoutRow') },
+		});
+		setIcon(layoutBtn, isRowLayout ? 'list' : 'columns-3');
+		layoutBtn.addEventListener('click', () => {
+			callbacks.onHeatmapLayoutToggle(column.name);
+		});
+
 		const addHeatmapBtn = headerActions.createEl('button', {
 			cls: 'dashboard-section-add-btn',
 			attr: { 'aria-label': t('heatmap.addItem') },
@@ -1796,7 +1806,9 @@ function renderSection(column: DashboardColumn, callbacks: RenderCallbacks, app:
 			callbacks.onHeatmapAdd(column.name);
 		});
 
-		const heatmapContainer = el.createDiv({ cls: 'dashboard-heatmap-section' });
+		const heatmapContainer = el.createDiv({
+			cls: 'dashboard-heatmap-section' + (isRowLayout ? ' dashboard-heatmap-section--row' : ' dashboard-heatmap-section--column'),
+		});
 		const items = column.heatmapItems ?? [];
 		for (const item of items) {
 			renderHeatmapItem(heatmapContainer, item, column.name, callbacks, app);

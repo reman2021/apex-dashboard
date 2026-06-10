@@ -762,6 +762,7 @@ export class DashboardView extends ItemView {
 					})
 				);
 			},
+			onHeatmapLayoutToggle: (columnName: string) => this.sync.toggleHeatmapLayout(columnName),
 		};
 	}
 

@@ -210,6 +210,7 @@ export interface DashboardColumn {
 	cards: DashboardCard[];
 	libraryConfig?: LibraryConfig;
 	heatmapItems?: HeatmapItem[];
+	heatmapLayout?: 'column' | 'row';
 }
 
 export interface DashboardData {
@@ -255,4 +256,5 @@ export interface RenderCallbacks {
 	onHeatmapAdd(columnName: string): void;
 	onHeatmapEdit(columnName: string, itemId: string): void;
 	onHeatmapDelete(columnName: string, itemId: string): void;
+	onHeatmapLayoutToggle(columnName: string): void;
 }
