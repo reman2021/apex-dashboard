@@ -10310,3 +10310,46 @@
 	font-size: 0.9em;
 	line-height: 1;
 }
+.tracker-key-suggestions {
+	margin-top: 6px;
+}
+
+.tracker-key-suggestions-label {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--db-text, var(--text-normal));
+	margin-bottom: 4px;
+}
+
+.chart-config-type-btn {
+	padding: 4px 12px;
+	border-radius: 6px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary-alt, var(--background-secondary));
+	color: var(--text-muted);
+	font-size: 12px;
+	cursor: pointer;
+	transition: all 0.15s ease;
+}
+
+.chart-config-type-btn:hover {
+	background: var(--background-modifier-hover);
+	border-color: var(--interactive-accent);
+	color: var(--text-normal);
+}
+
+.chart-config-type-btn.active {
+	background: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-weight: 500;
+}
+
+.chart-config-type-row {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 4px;
+}
+
+/* ===== Heatmap Section ===== */

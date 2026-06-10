@@ -1586,8 +1586,7 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 	setIcon(editBtn, 'settings');
 	editBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const event = new CustomEvent('dashboard-heatmap-edit', { detail: { columnName, itemId: item.id }, bubbles: true });
-		el.dispatchEvent(event);
+		callbacks.onHeatmapEdit(columnName, item.id);
 	});
 
 	const deleteBtn = actions.createEl('button', {
@@ -1597,8 +1596,7 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 	setIcon(deleteBtn, 'trash-2');
 	deleteBtn.addEventListener('click', (e) => {
 		e.stopPropagation();
-		const event = new CustomEvent('dashboard-heatmap-delete', { detail: { columnName, itemId: item.id }, bubbles: true });
-		el.dispatchEvent(event);
+		callbacks.onHeatmapDelete(columnName, item.id);
 	});
 
 	// Heatmap grid
