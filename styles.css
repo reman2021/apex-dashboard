@@ -4855,7 +4855,8 @@
 }
 
 .dashboard-section-row--collapsed > .dashboard-section-cards,
-.dashboard-section-row--collapsed > .dashboard-library-content {
+.dashboard-section-row--collapsed > .dashboard-library-content,
+.dashboard-section-row--collapsed > .dashboard-heatmap-section {
 	display: none;
 }
 
@@ -4905,7 +4906,6 @@
 
 .dashboard-section-archive-toggle {
 	gap: 2px;
-	opacity: 1;
 }
 
 .dashboard-section-archive-toggle--active {
@@ -10183,8 +10183,9 @@
 
 /* ===== Heatmap Section ===== */
 .dashboard-heatmap-section {
-	display: flex;
-	flex-direction: column;
+	display: grid;
+	grid-template-columns: max-content;
+	justify-content: start;
 	gap: 12px;
 	padding: 8px 12px;
 }
@@ -10200,6 +10201,7 @@
 }
 
 .dashboard-heatmap-item {
+	--dashboard-heatmap-cell-size: 10px;
 	display: flex;
 	flex-direction: column;
 	gap: 6px;
@@ -10207,6 +10209,9 @@
 	background: var(--db-card-bg, var(--background-primary));
 	border-radius: 8px;
 	border: 1px solid var(--db-border, var(--background-modifier-border));
+	width: max-content;
+	max-width: 100%;
+	overflow-x: auto;
 }
 
 .dashboard-heatmap-item-header {
@@ -10273,8 +10278,8 @@
 }
 
 .dashboard-heatmap-item-cell {
-	width: 10px;
-	height: 10px;
+	width: var(--dashboard-heatmap-cell-size);
+	height: var(--dashboard-heatmap-cell-size);
 	border-radius: 2px;
 }
 

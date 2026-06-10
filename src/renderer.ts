@@ -7,7 +7,7 @@ import { resolveVaultImage } from './banner';
 import { attachFileSuggest } from './file-suggest';
 import { showConfirmDialog } from './confirm-dialog';
 import { fetchWeather, getCachedWeather, getWeatherEmoji, getWeatherDescription } from './weather-service';
-import { readTrackerData } from './tracker-service';
+import { readAllFrontmatterTrackerData, readTrackerData } from './tracker-service';
 import type { PomodoroService } from './pomodoro-service';
 import type { ReadingService } from './reading-service';
 import { downloadCoverAsBlobUrl } from './book-service';
@@ -1601,7 +1601,7 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 
 	// Heatmap grid
 	const heatmapEl = el.createDiv({ cls: 'dashboard-heatmap-item-grid' });
-	const data = readTrackerData(app, '', item.key, item.days);
+	const data = readAllFrontmatterTrackerData(app, item.key, item.days);
 	const validPoints = data.filter(p => p.value !== null);
 
 	if (validPoints.length === 0) {
@@ -1635,26 +1635,23 @@ function renderHeatmapItem(container: HTMLElement, item: import('./types').Heatm
 		weeks.push(currentWeek);
 	}
 
-	const visibleWeeks = weeks.slice(-20);
+	const visibleWeeks = weeks;
 	const grid = heatmapEl.createDiv({ cls: 'dashboard-heatmap-item-grid-inner' });
 	grid.style.display = 'grid';
-	grid.style.gridTemplateColumns = `repeat(${visibleWeeks.length}, 10px)`;
-	grid.style.gridTemplateRows = 'repeat(7, 10px)';
+	grid.style.gridTemplateColumns = `repeat(${visibleWeeks.length}, var(--dashboard-heatmap-cell-size))`;
+	grid.style.gridTemplateRows = 'repeat(7, var(--dashboard-heatmap-cell-size))';
 	grid.style.gap = '2px';
 
 	for (const week of visibleWeeks) {
 		for (let dayIdx = 0; dayIdx < 7; dayIdx++) {
 			const point = week[dayIdx] ?? null;
 			const cell = grid.createDiv({ cls: 'dashboard-heatmap-item-cell' });
-			cell.style.width = '10px';
-			cell.style.height = '10px';
-			cell.style.borderRadius = '2px';
 			if (point === null || point.value === null) {
 				cell.addClass('dashboard-heatmap-item-cell--empty');
 			} else {
 				const intensity = (point.value - minVal) / range;
 				cell.style.backgroundColor = item.color || accentColor;
-				cell.style.opacity = String(0.15 + intensity * 0.85);
+				cell.style.opacity = String(0.38 + intensity * 0.62);
 				cell.title = `${point.date}: ${point.value}`;
 			}
 		}
